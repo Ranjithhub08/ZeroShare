@@ -10,10 +10,13 @@ const AuditLogs = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('All');
+
+  const eventTypes = ['All', ...new Set(data.map(log => log.event_type))];
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/audit/list');
+      const res = await fetch('http://localhost:5001/api/audit/logs');
       const json = await res.json();
       setData(json);
       setFilteredData(json);
@@ -29,13 +32,18 @@ const AuditLogs = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = data.filter(log => 
-      log.event_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (log.app_name && log.app_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (log.data_accessed && log.data_accessed.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const filtered = data.filter(log => {
+      const matchesSearch = 
+        log.event_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (log.app_name && log.app_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (log.data_accessed && log.data_accessed.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesFilter = filterType === 'All' || log.event_type === filterType;
+      
+      return matchesSearch && matchesFilter;
+    });
     setFilteredData(filtered);
-  }, [searchQuery, data]);
+  }, [searchQuery, filterType, data]);
 
   const columns = [
     { header: 'Event Type', accessor: 'event_type', render: (row) => <span className="text-medium">{row.event_type}</span> },
@@ -61,15 +69,26 @@ const AuditLogs = () => {
           <Download size={16} /> Export CSV
         </Button>
       </div>
-
       <div className="table-container">
         <div className="table-toolbar">
-          <SearchBar 
-            placeholder="Search logs by event or resource..." 
-            className="search-bar-md" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <div className="flex-row-gap-2 flex-grow">
+            <SearchBar 
+              placeholder="Search logs by event or resource..." 
+              className="search-bar-md" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <select 
+              className="form-input" 
+              style={{ width: '200px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '0 0.75rem' }}
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              {eventTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {loading ? (

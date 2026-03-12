@@ -3,7 +3,7 @@ import DataTable from '../components/ui/DataTable';
 import SearchBar from '../components/ui/SearchBar';
 import Button from '../components/ui/Button';
 import StatusBadge from '../components/ui/StatusBadge';
-import { Download } from 'lucide-react';
+import { Download, ArrowUpDown } from 'lucide-react';
 
 const AuditLogs = () => {
   const [data, setData] = useState([]);
@@ -11,6 +11,7 @@ const AuditLogs = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('All');
+  const [sortAsc, setSortAsc] = useState(false);
 
   const eventTypes = ['All', ...new Set(data.map(log => log.event_type))];
 
@@ -18,8 +19,9 @@ const AuditLogs = () => {
     try {
       const res = await fetch('http://localhost:5001/api/audit/logs');
       const json = await res.json();
-      setData(json);
-      setFilteredData(json);
+      const logs = json.data || json;
+      setData(logs);
+      setFilteredData(logs);
       setLoading(false);
     } catch (err) {
       console.error('Failed to fetch audit logs', err);
@@ -32,7 +34,7 @@ const AuditLogs = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = data.filter(log => {
+    let filtered = data.filter(log => {
       const matchesSearch = 
         log.event_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (log.app_name && log.app_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -42,8 +44,15 @@ const AuditLogs = () => {
       
       return matchesSearch && matchesFilter;
     });
+
+    filtered = [...filtered].sort((a, b) => {
+      const dateA = new Date(a.timestamp);
+      const dateB = new Date(b.timestamp);
+      return sortAsc ? dateA - dateB : dateB - dateA;
+    });
+
     setFilteredData(filtered);
-  }, [searchQuery, filterType, data]);
+  }, [searchQuery, filterType, data, sortAsc]);
 
   const columns = [
     { header: 'Event Type', accessor: 'event_type', render: (row) => <span className="text-medium">{row.event_type}</span> },
@@ -65,30 +74,37 @@ const AuditLogs = () => {
             Immutable record of all actions across your ZeroShare account.
           </p>
         </div>
-        <Button variant="secondary" className="flex-center-gap-2">
-          <Download size={16} /> Export CSV
-        </Button>
+        <div className="flex-row-gap-2">
+          <Button 
+            variant="secondary" 
+            className="flex-center-gap-2"
+            onClick={() => setSortAsc(!sortAsc)}
+          >
+            <ArrowUpDown size={16} /> {sortAsc ? 'Oldest First' : 'Newest First'}
+          </Button>
+          <Button variant="secondary" className="flex-center-gap-2">
+            <Download size={16} /> Export CSV
+          </Button>
+        </div>
       </div>
+
       <div className="table-container">
         <div className="table-toolbar">
-          <div className="flex-row-gap-2 flex-grow">
-            <SearchBar 
-              placeholder="Search logs by event or resource..." 
-              className="search-bar-md" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select 
-              className="form-input" 
-              style={{ width: '200px', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '0 0.75rem' }}
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-            >
-              {eventTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
+          <SearchBar 
+            placeholder="Search logs by event or resource..." 
+            className="search-bar-md" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <select 
+            className="filter-select"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            {eventTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
         </div>
 
         {loading ? (

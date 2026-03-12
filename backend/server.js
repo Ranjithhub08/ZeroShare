@@ -5,29 +5,24 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Config
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Middlewares
-// const errorMiddleware = require('./middleware/error.middleware');
-
-// Routes
-// const authRoutes = require('./routes/auth.routes');
-// const userRoutes = require('./routes/user.routes');
-// const dataRoutes = require('./routes/data.routes');
+// Route Imports
 const consentRoutes = require('./routes/consent.routes');
-// // app.use('/api/data', dataRoutes);
-app.use('/api/consents', consentRoutes);
 const auditRoutes = require('./routes/audit.routes');
+
+// Route Mounting
+app.use('/api/consents', consentRoutes);
 app.use('/api/audit', auditRoutes);
 
+// Health Check
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'API is running' });
+  res.status(200).json({ status: 'OK', message: 'ZeroShare API is running' });
 });
 
-// app.use(errorMiddleware);
-
+// Start Server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`ZeroShare API running on port ${PORT}`);
 });

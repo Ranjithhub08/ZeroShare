@@ -1,0 +1,81 @@
+:root {
+  /* Colors */
+  --color-bg-base: #0A0A0B;
+  --color-bg-elevated: #111214;
+  --color-bg-surface: #18191B;
+  --color-bg-surface-hover: #1E1F21;
+  --color-bg-surface-active: #232427;
+  
+  --color-text-primary: #EDEDED;
+  --color-text-secondary: #A0A0A0;
+  --color-text-tertiary: #6E6E6E;
+  
+  --color-border-subtle: #202020;
+  --color-border-strong: #333333;
+  --color-border-focus: #555555;
+  
+  --color-brand: #EDEDED;
+  --color-brand-contrast: #0A0A0B;
+  
+  --color-accent: #3E63DD;
+  --color-accent-hover: #486AEC;
+  --color-accent-dim: rgba(62, 99, 221, 0.15);
+  
+  --color-success: #1CC88A;
+  --color-success-bg: rgba(28, 200, 138, 0.1);
+  --color-danger: #E5484D;
+  --color-danger-bg: rgba(229, 72, 77, 0.1);
+  --color-warning: #F5A623;
+  --color-warning-bg: rgba(245, 166, 35, 0.1);
+
+  /* Spacing Grid (4px / 8px) */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+  --space-10: 64px;
+  --space-12: 96px;
+
+  /* Typography */
+  --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.25rem; /* 20px */
+  --text-2xl: 1.5rem; /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+  --text-4xl: 2.25rem; /* 36px */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* Shadows & Elevations */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}

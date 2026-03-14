@@ -1,90 +1,112 @@
-@import './styles/variables.css';
-@import './styles/layout.css';
-@import './styles/components.css';
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
 
-/* CSS Reset & Basics */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 226 25% 6%;
+    --foreground: 210 40% 98%;
+    --card: 226 23% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 226 23% 9%;
+    --popover-foreground: 210 40% 98%;
+    
+    /* Neon/Electric Indigo Primary */
+    --primary: 252 87% 65%;
+    --primary-foreground: 210 40% 98%;
+    
+    /* Subtle Glass Dark */
+    --secondary: 226 20% 12%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 226 20% 12%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 252 87% 65%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 226 15% 15%;
+    --input: 226 15% 15%;
+    --ring: 252 87% 65%;
+    --radius: 0.75rem;
+
+    --font-sans: 'Geist', sans-serif;
+  }
 }
 
-html {
-  font-family: var(--font-family-base);
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-bg-base);
-  color: var(--color-text-primary);
-  line-height: var(--line-height-normal);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    /* Custom CSS Noise Texture */
+    background-image: 
+      radial-gradient(ellipse at top right, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+      radial-gradient(ellipse at bottom left, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+    background-color: hsl(var(--background));
+    background-attachment: fixed;
+    height: 100vh;
+    overflow: hidden;
+  }
 }
 
-body {
-  overflow-x: hidden;
+/* Glassmorphism Utilities */
+@layer utilities {
+  .glass-panel {
+    @apply bg-secondary/40 backdrop-blur-xl border border-white/5 shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-md border border-white/5 transition-all duration-300;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-400 to-primary;
+  }
 }
 
-h1, h2, h3, h4, h5, h6 {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-tight);
-  letter-spacing: -0.02em;
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-h1 { font-size: var(--text-3xl); }
-h2 { font-size: var(--text-2xl); }
-h3 { font-size: var(--text-xl); }
-
-a {
-  color: inherit;
-  text-decoration: none;
-  transition: color var(--transition-fast);
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-button, input, select, textarea {
-  font-family: inherit;
-  font-size: inherit;
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 10px;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
 }
 
-@keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn var(--transition-normal) forwards;
-}
-
-.animate-slide-up {
-  animation: slideUpFade var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Layout Utilities */
+/* Base Layout Structure V2 */
 .app-container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  background-color: var(--color-bg-base);
+  @apply flex h-screen w-full bg-background overflow-hidden relative;
 }
 
 .main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow-y: auto;
-  position: relative;
+  @apply flex-1 flex flex-col h-screen relative w-full overflow-y-auto overflow-x-hidden;
+  /* Add left padding equal to the sidebar width (w-[260px]) */
+  padding-left: 260px; 
 }
 
 .page-container {
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-8);
+  @apply flex-1 flex flex-col relative w-full h-full min-h-full;
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
 }

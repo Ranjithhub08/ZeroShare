@@ -2,11 +2,14 @@ const consentService = require('../services/consent.service');
 
 exports.listConsents = async (req, res) => {
   try {
-    const consents = await consentService.getAllConsents();
+    const { page = 1, limit = 10, sortBy = 'created_at', sortDir = 'DESC' } = req.query;
+    const result = await consentService.getAllConsents(page, limit, sortBy, sortDir);
     res.status(200).json({
       success: true,
-      data: consents,
-      count: consents.length
+      data: result.consents,
+      count: result.total,
+      page: result.page,
+      totalPages: result.totalPages
     });
   } catch (error) {
     console.error('Error fetching consents:', error);

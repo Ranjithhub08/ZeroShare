@@ -1,9 +1,25 @@
 const db = require('../database/db');
 
 class ConsentService {
-  async getAllConsents() {
-    const result = await db.query('SELECT * FROM consents ORDER BY created_at DESC');
-    return result.rows;
+  async getAllConsents(page = 1, limit = 10, sortBy = 'created_at', sortDir = 'DESC') {
+    const offset = (page - 1) * limit;
+    
+    const countResult = await db.query('SELECT COUNT(*) FROM consents');
+    const total = parseInt(countResult.rows[0].count);
+
+    const query = `
+      SELECT * FROM consents 
+      ORDER BY ${sortBy} ${sortDir} 
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+    const result = await db.query(query);
+    
+    return {
+      consents: result.rows,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit)
+    };
   }
 
   async updateConsentStatus(id, newStatus) {

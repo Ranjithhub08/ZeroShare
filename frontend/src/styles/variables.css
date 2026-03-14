@@ -1,34 +1,34 @@
 :root {
-  /* Colors */
-  --color-bg-base: #0A0A0B;
-  --color-bg-elevated: #111214;
-  --color-bg-surface: #18191B;
-  --color-bg-surface-hover: #1E1F21;
-  --color-bg-surface-active: #232427;
+  /* Colors - Core Neutral (Linear/Vercel inspired) */
+  --color-bg-base: #010101;
+  --color-bg-elevated: #080808;
+  --color-bg-surface: #111111;
+  --color-bg-surface-hover: #161616;
+  --color-bg-surface-active: #1C1C1C;
   
-  --color-text-primary: #EDEDED;
-  --color-text-secondary: #A0A0A0;
-  --color-text-tertiary: #6E6E6E;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #A1A1AA;
+  --color-text-tertiary: #71717A;
   
-  --color-border-subtle: #202020;
-  --color-border-strong: #333333;
-  --color-border-focus: #555555;
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-strong: rgba(255, 255, 255, 0.1);
+  --color-border-focus: rgba(255, 255, 255, 0.2);
   
-  --color-brand: #EDEDED;
-  --color-brand-contrast: #0A0A0B;
+  --color-brand: #FFFFFF;
+  --color-brand-contrast: #000000;
   
-  --color-accent: #3E63DD;
-  --color-accent-hover: #486AEC;
-  --color-accent-dim: rgba(62, 99, 221, 0.15);
+  --color-accent: #6366F1;
+  --color-accent-hover: #818CF8;
+  --color-accent-dim: rgba(99, 102, 241, 0.1);
   
-  --color-success: #1CC88A;
-  --color-success-bg: rgba(28, 200, 138, 0.1);
-  --color-danger: #E5484D;
-  --color-danger-bg: rgba(229, 72, 77, 0.1);
-  --color-warning: #F5A623;
-  --color-warning-bg: rgba(245, 166, 35, 0.1);
+  --color-success: #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-danger: #EF4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
 
-  /* Spacing Grid (4px / 8px) */
+  /* Spacing Grid (8pt system) */
   --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
@@ -38,44 +38,55 @@
   --space-6: 32px;
   --space-8: 48px;
   --space-10: 64px;
-  --space-12: 96px;
+  --space-12: 80px;
 
-  /* Typography */
-  --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-family-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  /* Typography - Modern Inter Tight scale */
+  --font-family-base: "Inter Tight", "Inter", -apple-system, sans-serif;
+  --font-family-mono: "Geist Mono", "JetBrains Mono", monospace;
   
-  --text-xs: 0.75rem; /* 12px */
-  --text-sm: 0.875rem; /* 14px */
-  --text-base: 1rem; /* 16px */
-  --text-lg: 1.125rem; /* 18px */
-  --text-xl: 1.25rem; /* 20px */
-  --text-2xl: 1.5rem; /* 24px */
-  --text-3xl: 1.875rem; /* 30px */
-  --text-4xl: 2.25rem; /* 36px */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.8125rem;   /* 13px - Linear style */
+  --text-base: 0.875rem;  /* 14px - Stripe/Vercel standard */
+  --text-md: 1rem;        /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 2rem;       /* 32px */
+  --text-4xl: 2.5rem;     /* 40px */
 
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --line-height-tight: 1.2;
-  --line-height-snug: 1.375;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.625;
-
   /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
   --radius-full: 9999px;
 
-  /* Shadows & Elevations */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  /* Shadows - Minimalist high-depth */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
   
+  /* Glassmorphism */
+  --glass-blur: blur(20px);
+  --glass-surface: rgba(255, 255, 255, 0.02);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+  /* Elite Gradients */
+  --gradient-stellar: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  --gradient-glow: radial-gradient(circle at top, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+
   /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
+  --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --transition-fast: 150ms var(--ease-expo);
+  --transition-medium: 300ms var(--ease-expo);
+  --transition-slow: 450ms var(--ease-expo);
 }

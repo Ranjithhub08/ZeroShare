@@ -21,13 +21,34 @@ In an era of data exploitation, ZeroShare provides a secure, transparent bridge 
 - **Database**: PostgreSQL
 - **Infrastructure**: Docker
 
-## 🏗 Project Architecture
+## 🏗 System Architecture
+
+ZeroShare follows a modern layered architecture designed for security, scalability, and high-performance data processing.
+
+![ZeroShare System Architecture](docs/architecture-diagram.png)
+
+### 1. Frontend Layer (React Dashboard)
+A high-fidelity, responsive SPA built with **React** and **Tailwind CSS**. It leverages **shadcn/ui** for premium components and **Framer Motion** for cinematic animations. It handles real-time data visualization, granular consent management, and secure vault interactions.
+
+### 2. Backend API Layer (Node.js / Express)
+A robust **REST API Gateway** that serves as the logic engine. It manages cryptographic authorization flows, processes data access requests, and maintains an immutable ledger of system events.
+
+### 3. Database Layer (PostgreSQL)
+A managed **PostgreSQL** instance optimized for privacy governance. It stores encrypted user data, active consent permits, and comprehensive audit trails across structured tables including `users`, `user_data`, `consents`, and `audit_logs`.
+
+### 4. Analytics & Governance Layer
+A specialized sidecar service that aggregates system-wide metrics to generate real-time security insights and behavioral analytics for the user dashboard.
+
+---
+
+## 📂 Project Structure
 
 ```text
 zeroshare/
 ├── frontend/    # React SPA dashboard
 ├── backend/     # Express REST API
 ├── database/    # SQL schema and seeding scripts
+├── docs/        # Project documentation & assets
 └── docker/      # Infrastructure configuration
 ```
 

@@ -11,7 +11,7 @@ const NotificationDropdown = ({ notifications, onClose }) => {
         <CardTitle className="text-sm font-bold">Notifications</CardTitle>
         <button 
           className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider" 
-          onClick={() => console.log('Mark all read')}
+          onClick={() => {}}
         >
           Mark all as read
         </button>

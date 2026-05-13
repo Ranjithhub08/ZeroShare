@@ -27,12 +27,10 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars':                          ['warn', { varsIgnorePattern: '^[A-Z_]', args: 'none' }],
-      'react-refresh/only-export-components':    'warn',
-      'react-hooks/exhaustive-deps':             'warn',
-      'react-hooks/rules-of-hooks':              'warn',
-      'react-hooks/set-state-in-effect':         'warn',
-      'react-hooks/no-deriving-state-in-effects':'warn',
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', args: 'none' }],
+      'react-refresh/only-export-components': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/rules-of-hooks': 'error',
     },
   },
 ])

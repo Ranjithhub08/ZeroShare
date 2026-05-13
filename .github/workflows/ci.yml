@@ -41,4 +41,4 @@ jobs:
       - name: Build
         run: cd frontend && npm run build
       - name: Run frontend tests
-        run: cd frontend && npm test -- --run
+        run: cd frontend && npm test

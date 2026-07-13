@@ -38,6 +38,36 @@
   }
 }
 
+/* Light theme overrides — applied when <html class="light"> */
+.light {
+  --background: 220 20% 97%;
+  --foreground: 226 25% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 226 25% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 226 25% 10%;
+  --primary: 252 87% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 92%;
+  --secondary-foreground: 226 25% 10%;
+  --muted: 220 14% 92%;
+  --muted-foreground: 220 10% 45%;
+  --accent: 252 87% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 85%;
+  --input: 220 13% 85%;
+  --ring: 252 87% 55%;
+}
+
+.light body {
+  background-image:
+    radial-gradient(ellipse at top right, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+    radial-gradient(ellipse at bottom left, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
+  background-color: hsl(var(--background));
+}
+
 @layer base {
   * {
     @apply border-border;

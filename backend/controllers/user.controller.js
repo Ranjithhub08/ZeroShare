@@ -81,3 +81,21 @@ exports.deleteUser = async (req, res) => {
     res.status(400).json({ success: false, error: err.message });
   }
 };
+
+exports.suspendUser = async (req, res) => {
+  try {
+    const updated = await userService.suspendUser(req.params.id, req.userId);
+    res.json({ success: true, data: updated, message: `User ${updated.name} suspended` });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
+exports.unsuspendUser = async (req, res) => {
+  try {
+    const updated = await userService.unsuspendUser(req.params.id);
+    res.json({ success: true, data: updated, message: `User ${updated.name} reinstated` });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+};

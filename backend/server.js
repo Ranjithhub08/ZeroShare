@@ -1,6 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const http = require('http');
+const { WebSocketServer } = require('ws');
+const jwt = require('jsonwebtoken');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+const wsManager = require('./services/ws.manager');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -47,9 +52,30 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
-// Start Server
-app.listen(PORT, () => {
+// Start HTTP + WebSocket Server
+const server = http.createServer(app);
+
+// WebSocket server — real-time notifications
+const wss = new WebSocketServer({ server });
+const JWT_SECRET = process.env.JWT_SECRET || 'zeroshare_secret_key';
+
+wss.on('connection', (ws, req) => {
+  try {
+    const url = new URL(req.url, `http://localhost`);
+    const token = url.searchParams.get('token');
+    if (!token) { ws.close(1008, 'No token'); return; }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    wsManager.register(decoded.userId, ws);
+    ws.on('close', () => wsManager.unregister(decoded.userId, ws));
+    ws.send(JSON.stringify({ type: 'connected', message: 'Real-time notifications active' }));
+  } catch {
+    ws.close(1008, 'Invalid token');
+  }
+});
+
+server.listen(PORT, () => {
   console.log(`ZeroShare API running on port ${PORT}`);
+  console.log(`WebSocket server ready on ws://localhost:${PORT}`);
   // Run expiry check immediately on start
   consentService.expireConsents().catch(() => {});
 });

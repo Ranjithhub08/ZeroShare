@@ -8,4 +8,5 @@ router.post('/', ctrl.createConsent);
 router.post('/approve', ctrl.approveConsent);
 router.post('/reject', ctrl.rejectConsent);
 router.post('/revoke', ctrl.revokeConsent);
+router.post('/bulk', ctrl.bulkAction);
 module.exports = router;

@@ -2,13 +2,13 @@ const db = require('../database/db');
 const bcrypt = require('bcrypt');
 
 exports.getProfile = async (userId) => {
-  const res = await db.query('SELECT id, name, email, role, created_at FROM users WHERE id = $1', [userId]);
+  const res = await db.query('SELECT id, name, email, role, two_fa_enabled, created_at FROM users WHERE id = $1', [userId]);
   return res.rows[0];
 };
 
 exports.getAllUsers = async () => {
   const res = await db.query(
-    `SELECT u.id, u.name, u.email, u.role, u.created_at, u.updated_at,
+    `SELECT u.id, u.name, u.email, u.role, u.is_suspended, u.created_at, u.updated_at,
      (SELECT COUNT(*) FROM consents WHERE user_id=u.id) as consent_count,
      (SELECT COUNT(*) FROM user_data WHERE user_id=u.id) as data_count
      FROM users u ORDER BY u.created_at DESC`
@@ -49,6 +49,19 @@ exports.getUserRecords = async (targetId) => {
 exports.deleteUser = async (targetId, requesterId) => {
   if (parseInt(targetId) === parseInt(requesterId)) throw new Error('You cannot delete your own account');
   const res = await db.query('DELETE FROM users WHERE id=$1 RETURNING id,name,email', [targetId]);
+  if (res.rows.length === 0) throw new Error('User not found');
+  return res.rows[0];
+};
+
+exports.suspendUser = async (targetId, requesterId) => {
+  if (parseInt(targetId) === parseInt(requesterId)) throw new Error('You cannot suspend your own account');
+  const res = await db.query('UPDATE users SET is_suspended=TRUE WHERE id=$1 RETURNING id,name,email,is_suspended', [targetId]);
+  if (res.rows.length === 0) throw new Error('User not found');
+  return res.rows[0];
+};
+
+exports.unsuspendUser = async (targetId) => {
+  const res = await db.query('UPDATE users SET is_suspended=FALSE WHERE id=$1 RETURNING id,name,email,is_suspended', [targetId]);
   if (res.rows.length === 0) throw new Error('User not found');
   return res.rows[0];
 };

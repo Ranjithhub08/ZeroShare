@@ -33,10 +33,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 
 const ConsentRequests = () => {
+  const { isAdmin } = useAuth();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewConsentModalOpen, setIsNewConsentModalOpen] = useState(false);
@@ -287,6 +291,39 @@ const ConsentRequests = () => {
     }
   };
 
+  const pendingIds = data.filter(r => r.status === 'PENDING').map(r => r.id);
+  const allPendingSelected = pendingIds.length > 0 && pendingIds.every(id => selectedIds.has(id));
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allPendingSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendingIds));
+    }
+  };
+
+  const handleBulkAction = async (action) => {
+    if (!selectedIds.size) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/consents/bulk', { ids: Array.from(selectedIds), action });
+      setSelectedIds(new Set());
+      fetchConsents();
+    } catch (err) {
+      console.error('Bulk action failed', err);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const handleCreateConsent = async () => {
     if (!newConsentData.app_name || !newConsentData.data_type || !newConsentData.purpose) return;
     setLoading(true);
@@ -376,8 +413,62 @@ const ConsentRequests = () => {
               </div>
             </div>
 
-            <DataTable 
-              columns={columns} 
+            {/* Bulk action bar — admin only */}
+            {isAdmin && selectedIds.size > 0 && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-primary/20">
+                <span className="text-sm font-semibold text-primary">{selectedIds.size} selected</span>
+                <Button
+                  size="sm"
+                  className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                  onClick={() => handleBulkAction('APPROVE')}
+                  disabled={bulkLoading}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Approve All
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+                  onClick={() => handleBulkAction('REJECT')}
+                  disabled={bulkLoading}
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Reject All
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </Button>
+              </div>
+            )}
+
+            {/* Select all pending — admin only */}
+            {isAdmin && pendingIds.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-white/5 bg-muted/20">
+                <input
+                  type="checkbox"
+                  checked={allPendingSelected}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-input cursor-pointer accent-primary"
+                />
+                <span className="text-xs text-muted-foreground">Select all {pendingIds.length} pending</span>
+              </div>
+            )}
+
+            <DataTable
+              columns={isAdmin ? [
+                {
+                  header: '',
+                  accessor: '_check',
+                  render: (row) => row.status === 'PENDING' ? (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={() => toggleSelect(row.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-input cursor-pointer accent-primary"
+                    />
+                  ) : null
+                },
+                ...columns
+              ] : columns}
               data={filteredData}
               loading={loading}
               pagination={{ page, limit, total, totalPages }}

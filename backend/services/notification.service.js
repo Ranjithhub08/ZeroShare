@@ -1,4 +1,5 @@
 const db = require('../database/db');
+const wsManager = require('./ws.manager');
 
 class NotificationService {
   async getAll(userId, role) {
@@ -32,7 +33,10 @@ class NotificationService {
        VALUES ($1, $2, $3, 'unread') RETURNING *`,
       [userId, event_type, message]
     );
-    return res.rows[0];
+    const notification = res.rows[0];
+    // Push real-time to connected WebSocket client
+    wsManager.send(userId, { type: 'notification', data: notification });
+    return notification;
   }
 }
 

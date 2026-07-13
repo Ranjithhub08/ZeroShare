@@ -42,16 +42,42 @@ class AnalyticsService {
       privacyRiskScore = { score, grade, high_risk_consents: h, medium_risk_consents: m, sensitive_records: s };
     }
 
-    // Admin-only: user breakdown
+    // Admin-only: user breakdown + growth + consent status breakdown
     let userBreakdown = null;
+    let userGrowth = null;
+    let consentStatusBreakdown = null;
     if (isAdmin) {
-      const ubRes = await db.query(
-        `SELECT u.name, u.email, u.role,
-         (SELECT COUNT(*) FROM consents WHERE user_id=u.id) as consent_count,
-         (SELECT COUNT(*) FROM user_data WHERE user_id=u.id) as data_count
-         FROM users u ORDER BY u.created_at DESC`
-      );
+      const [ubRes, ugRes, csRes] = await Promise.all([
+        db.query(
+          `SELECT u.name, u.email, u.role, u.is_suspended,
+           (SELECT COUNT(*) FROM consents WHERE user_id=u.id) as consent_count,
+           (SELECT COUNT(*) FROM user_data WHERE user_id=u.id) as data_count
+           FROM users u ORDER BY u.created_at DESC`
+        ),
+        db.query(
+          `SELECT TO_CHAR(created_at,'YYYY-MM-DD') as date, COUNT(*) as count
+           FROM users WHERE created_at >= NOW() - INTERVAL '30 days'
+           GROUP BY date ORDER BY date ASC`
+        ),
+        db.query(
+          `SELECT TO_CHAR(created_at,'YYYY-MM-DD') as date,
+           SUM(CASE WHEN status='GRANTED' THEN 1 ELSE 0 END) as granted,
+           SUM(CASE WHEN status='DENIED' THEN 1 ELSE 0 END) as denied,
+           SUM(CASE WHEN status='REVOKED' THEN 1 ELSE 0 END) as revoked,
+           SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END) as pending
+           FROM consents WHERE created_at >= NOW() - INTERVAL '30 days'
+           GROUP BY date ORDER BY date ASC`
+        ),
+      ]);
       userBreakdown = ubRes.rows;
+      userGrowth = ugRes.rows.map(r => ({ date: r.date, count: parseInt(r.count) }));
+      consentStatusBreakdown = csRes.rows.map(r => ({
+        date: r.date,
+        granted: parseInt(r.granted),
+        denied: parseInt(r.denied),
+        revoked: parseInt(r.revoked),
+        pending: parseInt(r.pending),
+      }));
     }
 
     return {
@@ -62,6 +88,8 @@ class AnalyticsService {
       consent_activity_over_time: activityRes.rows.map(r => ({ date: r.date, count: parseInt(r.count) })),
       data_type_distribution: distRes.rows.map(r => ({ type: r.data_type, count: parseInt(r.count), percentage: parseFloat(r.percentage) })),
       user_breakdown: userBreakdown,
+      user_growth: userGrowth,
+      consent_status_breakdown: consentStatusBreakdown,
       privacy_risk_score: privacyRiskScore,
     };
   }

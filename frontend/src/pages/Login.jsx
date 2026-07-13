@@ -19,8 +19,12 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const result = await login(email, password);
+      if (result?.requires2FA) {
+        navigate(`/verify-otp?token=${result.tempToken}&email=${encodeURIComponent(result.email)}`);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {

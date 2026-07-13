@@ -15,6 +15,9 @@ async function migrate() {
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires TIMESTAMP WITH TIME ZONE`);
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_temp_token VARCHAR(255)`);
 
+  // Suspend users
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE`);
+
   // Sessions table
   await db.query(`
     CREATE TABLE IF NOT EXISTS sessions (

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, PieChart, Pie, Cell
+  AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
 import { cn } from "@/lib/utils";
 import api from '@/services/api';
@@ -467,6 +467,78 @@ const Dashboard = () => {
             </Button>
           </div>
         </div>
+
+        {/* Admin-only: User Growth + Consent Status Breakdown charts */}
+        {isAdmin && (
+          <div className="col-span-12 grid grid-cols-12 gap-6">
+
+            {/* User Growth Chart */}
+            <div className="col-span-12 lg:col-span-6 glass-card p-0 flex flex-col overflow-hidden">
+              <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <h2 className="text-lg font-semibold text-white">User Growth</h2>
+                </div>
+                <p className="text-sm text-zinc-400 mt-1">New registrations over the last 30 days.</p>
+              </div>
+              <div className="p-6 h-[280px]">
+                {stats.user_growth?.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.user_growth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="ugGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                      <XAxis dataKey="date" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false}
+                        tickFormatter={s => new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
+                      <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip contentStyle={{ backgroundColor: 'rgba(9,9,11,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                        formatter={(v) => [v, 'New Users']} />
+                      <Area type="natural" dataKey="count" stroke="#60a5fa" strokeWidth={3} fill="url(#ugGradient)"
+                        activeDot={{ r: 5, fill: '#f8fafc', stroke: '#60a5fa', strokeWidth: 2 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-zinc-500 text-sm">No new registrations in last 30 days.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Consent Status Breakdown Chart */}
+            <div className="col-span-12 lg:col-span-6 glass-card p-0 flex flex-col overflow-hidden">
+              <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <h2 className="text-lg font-semibold text-white">Consent Status Breakdown</h2>
+                </div>
+                <p className="text-sm text-zinc-400 mt-1">Granted / Denied / Revoked per day (30 days).</p>
+              </div>
+              <div className="p-6 h-[280px]">
+                {stats.consent_status_breakdown?.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.consent_status_breakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
+                      <XAxis dataKey="date" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false}
+                        tickFormatter={s => new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
+                      <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <Tooltip contentStyle={{ backgroundColor: 'rgba(9,9,11,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }} />
+                      <Legend wrapperStyle={{ fontSize: '11px', color: '#71717a' }} />
+                      <Bar dataKey="granted" name="Granted" fill="#34d399" radius={[4,4,0,0]} />
+                      <Bar dataKey="denied" name="Denied" fill="#f87171" radius={[4,4,0,0]} />
+                      <Bar dataKey="revoked" name="Revoked" fill="#fbbf24" radius={[4,4,0,0]} />
+                      <Bar dataKey="pending" name="Pending" fill="#a78bfa" radius={[4,4,0,0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-zinc-500 text-sm">No consent data in last 30 days.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Admin-only: User Breakdown Table */}
         {isAdmin && stats.user_breakdown && stats.user_breakdown.length > 0 && (

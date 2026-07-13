@@ -49,3 +49,21 @@ exports.revokeConsent = async (req, res) => {
     res.status(400).json({ success: false, error: err.message });
   }
 };
+
+exports.bulkAction = async (req, res) => {
+  if (req.userRole !== 'admin')
+    return res.status(403).json({ success: false, error: 'Admin only' });
+  const { ids, action } = req.body;
+  if (!Array.isArray(ids) || !ids.length || !['APPROVE', 'REJECT'].includes(action))
+    return res.status(400).json({ success: false, error: 'ids array and action (APPROVE/REJECT) required' });
+  try {
+    const status = action === 'APPROVE' ? 'GRANTED' : 'DENIED';
+    const results = await Promise.allSettled(
+      ids.map(id => consentService.updateConsentStatus(id, status, req.userId, req.userRole))
+    );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    res.json({ success: true, message: `${succeeded} consent(s) ${status.toLowerCase()}` });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};

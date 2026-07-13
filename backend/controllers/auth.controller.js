@@ -38,7 +38,7 @@ exports.login = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Email and password are required' });
   try {
     const result = await db.query(
-      'SELECT id, name, email, password_hash, role, two_fa_enabled FROM users WHERE email = $1',
+      'SELECT id, name, email, password_hash, role, two_fa_enabled, is_suspended FROM users WHERE email = $1',
       [email]
     );
     if (result.rows.length === 0)
@@ -47,6 +47,8 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid)
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    if (user.is_suspended)
+      return res.status(403).json({ success: false, error: 'Your account has been suspended. Please contact support.' });
 
     // 2FA enabled — send OTP
     if (user.two_fa_enabled) {

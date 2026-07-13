@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
-import { Users, Shield, User, Loader2, Trash2, AlertTriangle, Mail, Calendar, Clock, Database, FileCheck } from 'lucide-react';
+import { Users, Shield, User, Loader2, Trash2, AlertTriangle, Mail, Calendar, Clock, Database, FileCheck, PauseCircle, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [suspendingId, setSuspendingId] = useState(null);
 
   // User detail modal
   const [viewUser, setViewUser] = useState(null);
@@ -67,6 +68,19 @@ const AdminUsers = () => {
       console.error(err);
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const handleToggleSuspend = async (u) => {
+    setSuspendingId(u.id);
+    try {
+      const endpoint = u.is_suspended ? `/user/${u.id}/unsuspend` : `/user/${u.id}/suspend`;
+      await api.put(endpoint);
+      fetchUsers();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update suspension');
+    } finally {
+      setSuspendingId(null);
     }
   };
 
@@ -140,18 +154,25 @@ const AdminUsers = () => {
                     </td>
                     <td className="px-6 py-4 text-zinc-400">{u.email}</td>
                     <td className="px-6 py-4">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] font-bold uppercase tracking-wider gap-1",
-                          u.role === 'admin'
-                            ? "border-primary/30 text-primary bg-primary/10"
-                            : "border-zinc-700 text-zinc-400 bg-white/5"
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] font-bold uppercase tracking-wider gap-1",
+                            u.role === 'admin'
+                              ? "border-primary/30 text-primary bg-primary/10"
+                              : "border-zinc-700 text-zinc-400 bg-white/5"
+                          )}
+                        >
+                          {u.role === 'admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                          {u.role}
+                        </Badge>
+                        {u.is_suspended && (
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider border-orange-500/40 text-orange-400 bg-orange-500/10">
+                            Suspended
+                          </Badge>
                         )}
-                      >
-                        {u.role === 'admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                        {u.role}
-                      </Badge>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-center font-mono text-zinc-300">{u.consent_count}</td>
                     <td className="px-6 py-4 text-center font-mono text-zinc-300">{u.data_count}</td>
@@ -169,6 +190,20 @@ const AdminUsers = () => {
                             ? <Loader2 className="h-3 w-3 animate-spin" />
                             : `Make ${u.role === 'admin' ? 'User' : 'Admin'}`
                           }
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={cn("h-8 w-8 p-0", u.is_suspended
+                            ? "text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                            : "text-orange-400 hover:text-orange-300 hover:bg-orange-500/10")}
+                          onClick={() => handleToggleSuspend(u)}
+                          disabled={suspendingId === u.id || isSelf}
+                          title={isSelf ? "Can't suspend yourself" : u.is_suspended ? `Reinstate ${u.name}` : `Suspend ${u.name}`}
+                        >
+                          {suspendingId === u.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : u.is_suspended ? <PlayCircle className="h-4 w-4" /> : <PauseCircle className="h-4 w-4" />}
                         </Button>
                         <Button
                           size="sm"

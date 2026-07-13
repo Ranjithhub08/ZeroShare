@@ -11,6 +11,7 @@ const Login = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -19,9 +20,9 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, rememberMe);
       if (result?.requires2FA) {
-        navigate(`/verify-otp?token=${result.tempToken}&email=${encodeURIComponent(result.email)}`);
+        navigate(`/verify-otp?token=${result.tempToken}&email=${encodeURIComponent(result.email)}&remember=${rememberMe}`);
       } else {
         navigate('/dashboard');
       }
@@ -89,7 +90,9 @@ const Login = () => {
             <input
               type="checkbox"
               id="remember"
-              className="h-4 w-4 rounded border-input bg-muted/30 text-primary ring-offset-background focus:ring-2 focus:ring-ring"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-input bg-muted/30 accent-primary cursor-pointer"
             />
             <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">
               Remember me for 30 days

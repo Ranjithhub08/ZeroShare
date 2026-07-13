@@ -15,6 +15,7 @@ const VerifyOTP = () => {
 
   const tempToken = searchParams.get('token');
   const email = searchParams.get('email');
+  const rememberMe = searchParams.get('remember') === 'true';
 
   useEffect(() => {
     if (!tempToken) navigate('/login');
@@ -49,7 +50,7 @@ const VerifyOTP = () => {
     setError('');
     setLoading(true);
     try {
-      await verifyOTP(tempToken, code);
+      await verifyOTP(tempToken, code, rememberMe);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid code. Please try again.');

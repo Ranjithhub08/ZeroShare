@@ -23,6 +23,9 @@ exports.register = async (req, res) => {
       [name, email, hash]
     );
     const user = result.rows[0];
+    // Send welcome email (fire-and-forget)
+    sendEmail({ to: user.email, ...templates.welcomeEmail(user.name) })
+      .catch(err => console.error('[Welcome] Email failed:', err.message));
     const sessionId = await sessionService.createSession(user.id, req);
     const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, sessionId }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ success: true, data: { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } } });
@@ -33,7 +36,7 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, rememberMe } = req.body;
   if (!email || !password)
     return res.status(400).json({ success: false, error: 'Email and password are required' });
   try {
@@ -64,12 +67,13 @@ exports.login = async (req, res) => {
       } catch (e) {
         console.error('[2FA] Email failed:', e.message);
       }
-      return res.json({ success: true, requires2FA: true, tempToken, email: user.email });
+      return res.json({ success: true, requires2FA: true, tempToken, email: user.email, rememberMe: !!rememberMe });
     }
 
     // No 2FA — create session and issue token
     const sessionId = await sessionService.createSession(user.id, req);
-    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, sessionId }, JWT_SECRET, { expiresIn: '7d' });
+    const expiresIn = rememberMe ? '30d' : '7d';
+    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, sessionId }, JWT_SECRET, { expiresIn });
     res.json({ success: true, data: { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } } });
   } catch (err) {
     console.error('Login error:', err);
@@ -78,7 +82,7 @@ exports.login = async (req, res) => {
 };
 
 exports.verifyOTP = async (req, res) => {
-  const { tempToken, otp } = req.body;
+  const { tempToken, otp, rememberMe } = req.body;
   if (!tempToken || !otp)
     return res.status(400).json({ success: false, error: 'Token and OTP are required' });
   try {
@@ -96,7 +100,8 @@ exports.verifyOTP = async (req, res) => {
 
     await db.query('UPDATE users SET otp=NULL, otp_expires=NULL, otp_temp_token=NULL WHERE id=$1', [user.id]);
     const sessionId = await sessionService.createSession(user.id, req);
-    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, sessionId }, JWT_SECRET, { expiresIn: '7d' });
+    const expiresIn = rememberMe ? '30d' : '7d';
+    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role, sessionId }, JWT_SECRET, { expiresIn });
     res.json({ success: true, data: { token, user: { id: user.id, name: user.name, email: user.email, role: user.role } } });
   } catch (err) {
     console.error('Verify OTP error:', err);

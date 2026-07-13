@@ -55,6 +55,27 @@ async function sendEmail({ to, subject, html }) {
 
 // Email templates
 const templates = {
+  welcomeEmail: (name) => ({
+    subject: '🎉 Welcome to ZeroShare — Your data, your rules',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;">
+        <h2 style="color:#7c3aed;margin-top:0;">Welcome to ZeroShare 🛡️</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Your account has been created successfully. You now have full control over who accesses your personal data.</p>
+        <div style="margin:24px 0;padding:20px;background:#f5f3ff;border-radius:8px;border-left:4px solid #7c3aed;">
+          <p style="margin:0;font-size:14px;color:#5b21b6;font-weight:600;">What you can do with ZeroShare:</p>
+          <ul style="margin:12px 0 0;padding-left:20px;color:#6b7280;font-size:14px;line-height:1.8;">
+            <li>Grant and revoke data access for any app</li>
+            <li>Track every time your data is accessed</li>
+            <li>Set expiry dates on consents</li>
+            <li>Enable 2FA for extra security</li>
+          </ul>
+        </div>
+        <p style="font-size:13px;color:#6b7280;">If you didn't create this account, please ignore this email.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+        <p style="font-size:12px;color:#9ca3af;">ZeroShare — Your data, your rules.</p>
+      </div>`
+  }),
   consentGranted: (name, appName, dataType) => ({
     subject: `✅ Consent Approved — ${appName}`,
     html: `

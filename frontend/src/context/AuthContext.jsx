@@ -8,10 +8,10 @@ export const AuthProvider = ({ children }) => {
     try { return JSON.parse(localStorage.getItem('zs_user')); } catch { return null; }
   });
 
-  const login = useCallback(async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
+  const login = useCallback(async (email, password, rememberMe = false) => {
+    const res = await api.post('/auth/login', { email, password, rememberMe });
     if (res.data.requires2FA) {
-      return { requires2FA: true, tempToken: res.data.tempToken, email: res.data.email };
+      return { requires2FA: true, tempToken: res.data.tempToken, email: res.data.email, rememberMe: res.data.rememberMe };
     }
     const { token, user } = res.data.data;
     localStorage.setItem('zs_token', token);
@@ -20,8 +20,8 @@ export const AuthProvider = ({ children }) => {
     return user;
   }, []);
 
-  const verifyOTP = useCallback(async (tempToken, otp) => {
-    const res = await api.post('/auth/verify-otp', { tempToken, otp });
+  const verifyOTP = useCallback(async (tempToken, otp, rememberMe = false) => {
+    const res = await api.post('/auth/verify-otp', { tempToken, otp, rememberMe });
     const { token, user } = res.data.data;
     localStorage.setItem('zs_token', token);
     localStorage.setItem('zs_user', JSON.stringify(user));

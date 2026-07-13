@@ -1,5 +1,6 @@
 const db = require('../database/db');
 const notifService = require('./notification.service');
+const { sendEmail, templates } = require('./email.service');
 
 // Parse duration string → expiry date (or null for Permanent)
 function calcExpiry(duration) {
@@ -87,6 +88,16 @@ class ConsentService {
     };
     if (msgMap[status]) {
       await notifService.create(consent.user_id, `Consent ${status}`, msgMap[status]);
+      // Send email to the user
+      const userRes = await db.query('SELECT name, email FROM users WHERE id=$1', [consent.user_id]);
+      if (userRes.rows.length > 0) {
+        const { name, email } = userRes.rows[0];
+        const emailFn = status === 'GRANTED' ? templates.consentGranted
+                      : status === 'DENIED'  ? templates.consentDenied
+                      :                        templates.consentRevoked;
+        sendEmail({ to: email, ...emailFn(name, consent.app_name, consent.data_type) })
+          .catch(err => console.error('[Email] Failed to send consent email:', err.message));
+      }
     }
     return consent;
   }
@@ -101,6 +112,12 @@ class ConsentService {
     for (const c of res.rows) {
       await notifService.create(c.user_id, 'Consent Expired',
         `Your consent for "${c.app_name}" (${c.data_type}) has expired and been auto-revoked.`);
+      const userRes = await db.query('SELECT name, email FROM users WHERE id=$1', [c.user_id]);
+      if (userRes.rows.length > 0) {
+        const { name, email } = userRes.rows[0];
+        sendEmail({ to: email, ...templates.consentExpired(name, c.app_name, c.data_type) })
+          .catch(err => console.error('[Email] Expiry email failed:', err.message));
+      }
     }
     return res.rows.length;
   }

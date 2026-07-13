@@ -61,7 +61,7 @@ const Login = () => {
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-xs text-primary hover:underline">Forgot password?</a>
+                <button type="button" className="text-xs text-primary hover:underline" onClick={() => navigate('/forgot-password')}>Forgot password?</button>
               </div>
               <Input
                 id="password"

@@ -1,4 +1,5 @@
 const userService = require('../services/user.service');
+const { generatePrivacyReport } = require('../services/report.service');
 
 exports.getProfile = async (req, res) => {
   try {
@@ -55,6 +56,20 @@ exports.getUserRecords = async (req, res) => {
     res.json({ success: true, data: records });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch user records' });
+  }
+};
+
+exports.downloadPrivacyReport = async (req, res) => {
+  try {
+    if (req.userRole === 'admin')
+      return res.status(403).json({ success: false, error: 'Admin cannot download a personal privacy report' });
+    const pdfBuffer = await generatePrivacyReport(req.userId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="zeroshare-privacy-report.pdf"');
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Privacy report error:', err);
+    res.status(500).json({ success: false, error: 'Failed to generate report' });
   }
 };
 

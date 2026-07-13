@@ -1,4 +1,5 @@
 const db = require('../database/db');
+const { encrypt, decrypt } = require('./encryption.service');
 
 class DataService {
   async listData(userId, role, page=1, limit=10) {
@@ -13,7 +14,7 @@ class DataService {
     );
     const total = parseInt(countRes.rows[0].count);
 
-    // Admin sees metadata only — value is masked server-side for privacy
+    // Admin sees [ENCRYPTED] — enforced at SQL level
     const selectValue = isAdmin ? `'[ENCRYPTED]' as value` : `ud.value`;
     const rows = await db.query(
       `SELECT ud.id, ud.user_id, ud.data_type, ud.created_at, ud.updated_at,
@@ -23,15 +24,24 @@ class DataService {
        ${where} ORDER BY ud.created_at DESC LIMIT $1 OFFSET $2`,
       params
     );
-    return { data: rows.rows, total, page: parseInt(page), totalPages: Math.ceil(total/limit) };
+
+    // Decrypt values for regular users
+    const data = rows.rows.map(r => ({
+      ...r,
+      value: isAdmin ? '[ENCRYPTED]' : decrypt(r.value)
+    }));
+
+    return { data, total, page: parseInt(page), totalPages: Math.ceil(total/limit) };
   }
 
   async addData(userId, data_type, value) {
+    const encryptedValue = encrypt(value);
     const res = await db.query(
       `INSERT INTO user_data (user_id, data_type, value) VALUES ($1,$2,$3) RETURNING *`,
-      [userId, data_type, value]
+      [userId, data_type, encryptedValue]
     );
-    return res.rows[0];
+    const row = res.rows[0];
+    return { ...row, value: decrypt(row.value) };
   }
 
   async exportData(userId) {
@@ -39,7 +49,8 @@ class DataService {
       `SELECT id, data_type, value, created_at FROM user_data WHERE user_id=$1 ORDER BY created_at DESC`,
       [userId]
     );
-    return res.rows;
+    // Decrypt all values for the owner
+    return res.rows.map(r => ({ ...r, value: decrypt(r.value) }));
   }
 
   async deleteData(id, userId, role) {

@@ -5,6 +5,7 @@ const protect = require('../middleware/auth.middleware');
 const adminOnly = require('../middleware/admin.middleware');
 router.use(protect);
 router.get('/profile', ctrl.getProfile);
+router.get('/privacy-report', ctrl.downloadPrivacyReport);
 router.put('/profile', ctrl.updateProfile);
 router.put('/password', ctrl.updatePassword);
 router.get('/all', adminOnly, ctrl.getAllUsers);

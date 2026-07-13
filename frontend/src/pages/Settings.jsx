@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 import ProfileCard from '../components/ui/ProfileCard';
 import {
   Card,
@@ -33,18 +34,21 @@ import {
   ChevronRight,
   LogOut,
   Eye,
-  EyeOff
+  EyeOff,
+  FileText,
+  Download
 } from 'lucide-react';
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
 
   // Change password modal
+  const [reportLoading, setReportLoading] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const [pwData, setPwData] = useState({ current: '', newPw: '', confirm: '' });
   const [pwLoading, setPwLoading] = useState(false);
@@ -114,6 +118,25 @@ const Settings = () => {
       setPwError(err.response?.data?.error || 'Failed to update password.');
     } finally {
       setPwLoading(false);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    setReportLoading(true);
+    try {
+      const res = await api.get('/user/privacy-report', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'zeroshare-privacy-report.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Report download failed', err);
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -264,6 +287,28 @@ const Settings = () => {
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </Button>
+
+              {!isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between h-12 px-2 hover:bg-muted/50 group"
+                  onClick={handleDownloadReport}
+                  disabled={reportLoading}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center group-hover:bg-background transition-colors">
+                      {reportLoading
+                        ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        : <FileText className="h-4 w-4 text-muted-foreground" />}
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-semibold">Privacy Report</span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Download PDF</span>
+                    </div>
+                  </div>
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>

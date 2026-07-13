@@ -179,6 +179,18 @@ const DataVault = () => {
     } catch { alert('Download failed.'); }
   };
 
+  const handleViewFile = async (row) => {
+    try {
+      const token = localStorage.getItem('zs_token');
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+      const url = `${baseUrl}/data/${row.id}/view`;
+      // Fetch with auth then open as blob in new tab
+      const res = await api.get(`/data/${row.id}/view`, { responseType: 'blob' });
+      const blobUrl = URL.createObjectURL(new Blob([res.data]));
+      window.open(blobUrl, '_blank');
+    } catch { alert('Could not open file.'); }
+  };
+
   const getFileIcon = (name) => {
     if (!name) return <FileText className="h-3.5 w-3.5" />;
     const ext = name.split('.').pop()?.toLowerCase();
@@ -316,23 +328,13 @@ const DataVault = () => {
       accessor: 'actions',
       render: (row) => (
         <div className="flex justify-end gap-1">
-          {!isAdmin && row.record_type === 'file' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-emerald-400 hover:bg-emerald-500/10"
-              onClick={() => handleDownloadFile(row)}
-              title="Download file"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          )}
-          {!isAdmin && row.record_type !== 'file' && (
+          {!isAdmin && (
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-blue-400 hover:bg-blue-500/10"
               onClick={() => { setViewRecord(row); setIsViewModalOpen(true); }}
+              title="View record"
             >
               <Eye className="h-4 w-4" />
             </Button>
@@ -483,21 +485,35 @@ const DataVault = () => {
 
               {/* Value or File */}
               {viewRecord.record_type === 'file' ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Stored File</span>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
-                    <div className="flex items-center gap-3">
+                  {/* Clickable file card */}
+                  <button
+                    type="button"
+                    onClick={() => handleViewFile(viewRecord)}
+                    className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-colors text-left w-full group"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       {getFileIcon(viewRecord.file_name)}
-                      <div>
-                        <p className="text-sm font-semibold">{viewRecord.file_name}</p>
-                        <p className="text-xs text-muted-foreground">{formatBytes(viewRecord.file_size)}</p>
-                      </div>
                     </div>
-                    <Button size="sm" className="gap-2" onClick={() => handleDownloadFile(viewRecord)}>
-                      <Download className="h-3.5 w-3.5" />
-                      Download
-                    </Button>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-primary group-hover:underline truncate">
+                        {viewRecord.file_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatBytes(viewRecord.file_size)} · Click to open</p>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                  {/* Download button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 w-full"
+                    onClick={() => handleDownloadFile(viewRecord)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download File
+                  </Button>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">

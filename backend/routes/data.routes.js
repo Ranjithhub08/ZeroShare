@@ -10,5 +10,6 @@ router.get('/',                 ctrl.listData);
 router.post('/',                ctrl.addData);
 router.post('/upload',          uploadData.single('file'), ctrl.uploadFile);
 router.get('/:id/download',     ctrl.downloadFile);
+router.get('/:id/view',         ctrl.viewFile);
 router.delete('/:id',           ctrl.deleteData);
 module.exports = router;

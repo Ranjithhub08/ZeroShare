@@ -99,3 +99,20 @@ exports.downloadFile = async (req, res) => {
     res.status(500).json({ success: false, error: 'Download failed' });
   }
 };
+
+exports.viewFile = async (req, res) => {
+  try {
+    const rec = await db.query('SELECT * FROM user_data WHERE id=$1 AND user_id=$2', [req.params.id, req.userId]);
+    if (!rec.rows[0]) return res.status(404).json({ success: false, error: 'Record not found' });
+    const { file_url, file_name } = rec.rows[0];
+    if (!file_url) return res.status(400).json({ success: false, error: 'Not a file record' });
+    const filename = file_url.split('/uploads/data/')[1];
+    const filePath = path.join(__dirname, '../uploads/data', filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'File not found on server' });
+    // Send inline (opens in browser for PDFs and images)
+    res.setHeader('Content-Disposition', `inline; filename="${file_name}"`);
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'View failed' });
+  }
+};

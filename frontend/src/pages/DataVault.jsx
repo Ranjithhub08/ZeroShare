@@ -179,14 +179,30 @@ const DataVault = () => {
     } catch { alert('Download failed.'); }
   };
 
+  const getMimeType = (filename) => {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    const map = {
+      pdf: 'application/pdf',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      txt: 'text/plain',
+      csv: 'text/csv',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+    return map[ext] || 'application/octet-stream';
+  };
+
   const handleViewFile = async (row) => {
     try {
-      const token = localStorage.getItem('zs_token');
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
-      const url = `${baseUrl}/data/${row.id}/view`;
-      // Fetch with auth then open as blob in new tab
       const res = await api.get(`/data/${row.id}/view`, { responseType: 'blob' });
-      const blobUrl = URL.createObjectURL(new Blob([res.data]));
+      const mimeType = getMimeType(row.file_name);
+      const blobUrl = URL.createObjectURL(new Blob([res.data], { type: mimeType }));
       window.open(blobUrl, '_blank');
     } catch { alert('Could not open file.'); }
   };

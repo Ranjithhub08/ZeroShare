@@ -11,6 +11,50 @@ const wsManager = require('./services/ws.manager');
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Auto-run migrations on startup (safe — all use IF NOT EXISTS)
+const runMigrations = async () => {
+  try {
+    const db = require('./database/db');
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user'`);
+    await db.query(`ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+    await db.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`);
+    await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP WITH TIME ZONE`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS two_fa_enabled BOOLEAN DEFAULT FALSE`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS otp VARCHAR(6)`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires TIMESTAMP WITH TIME ZONE`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_temp_token VARCHAR(255)`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)`);
+    await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE`);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        is_revoked BOOLEAN DEFAULT FALSE
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS consent_history (
+        id SERIAL PRIMARY KEY,
+        consent_id INTEGER REFERENCES consents(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL,
+        changed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        note TEXT,
+        changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `);
+    console.log('✅ Database migrations applied.');
+  } catch (err) {
+    console.error('❌ Migration error:', err.message);
+  }
+};
+
 // Security headers
 app.use(helmet());
 
@@ -86,9 +130,12 @@ wss.on('connection', (ws, req) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`ZeroShare API running on port ${PORT}`);
-  console.log(`WebSocket server ready on ws://localhost:${PORT}`);
-  // Run expiry check immediately on start
-  consentService.expireConsents().catch(() => {});
+// Run migrations then start server
+runMigrations().then(() => {
+  server.listen(PORT, () => {
+    console.log(`ZeroShare API running on port ${PORT}`);
+    console.log(`WebSocket server ready on ws://localhost:${PORT}`);
+    // Run expiry check immediately on start
+    consentService.expireConsents().catch(() => {});
+  });
 });

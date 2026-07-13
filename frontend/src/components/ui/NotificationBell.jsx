@@ -5,6 +5,7 @@ import NotificationDropdown from './NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { cn } from "@/lib/utils";
 import api from '@/services/api';
+import * as wsService from '@/services/websocket';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,22 +20,36 @@ const NotificationBell = () => {
         setNotifications(res.data.data);
         setUnreadCount(res.data.unread ?? 0);
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+
+    // Connect WebSocket for real-time push
+    const token = localStorage.getItem('zs_token');
+    if (token) wsService.connect(token);
+
+    const unsubscribe = wsService.subscribe((msg) => {
+      if (msg.type === 'notification') {
+        setNotifications(prev => [msg.data, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      }
+    });
+
+    // Fallback poll every 60s (WebSocket handles the rest)
+    const interval = setInterval(fetchNotifications, 60000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target))
         setIsOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -45,21 +60,15 @@ const NotificationBell = () => {
       await api.patch('/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
       setUnreadCount(0);
-    } catch (err) {
-      console.error('Mark all read failed:', err);
-    }
+    } catch {}
   };
 
   const handleMarkOneRead = async (id) => {
     try {
       await api.patch(`/notifications/${id}/read`);
-      setNotifications(prev =>
-        prev.map(n => n.id === id ? { ...n, status: 'read' } : n)
-      );
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, status: 'read' } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('Mark read failed:', err);
-    }
+    } catch {}
   };
 
   return (
@@ -67,10 +76,7 @@ const NotificationBell = () => {
       <Button
         variant="ghost"
         size="icon"
-        className={cn(
-          "h-9 w-9 relative rounded-full ring-offset-background transition-all",
-          isOpen && "bg-muted"
-        )}
+        className={cn("h-9 w-9 relative rounded-full ring-offset-background transition-all", isOpen && "bg-muted")}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Bell className="h-4.5 w-4.5 text-muted-foreground" />

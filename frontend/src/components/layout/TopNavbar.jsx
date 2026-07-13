@@ -13,12 +13,15 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { User, LogOut, Settings as SettingsIcon, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import { Button } from '@/components/ui/button';
 
 const TopNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -58,6 +61,17 @@ const TopNavbar = () => {
       </div>
 
       <div className="flex items-center gap-5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-full"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark'
+            ? <Sun className="h-4 w-4 text-muted-foreground" />
+            : <Moon className="h-4 w-4 text-muted-foreground" />}
+        </Button>
         <NotificationBell />
         <div className="h-4 w-[1px] bg-white/10" />
 

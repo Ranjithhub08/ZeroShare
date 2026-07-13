@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Loader2, Command } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import SearchResultsPanel from './SearchResultsPanel';
 import { Input } from "@/components/ui/input";
 

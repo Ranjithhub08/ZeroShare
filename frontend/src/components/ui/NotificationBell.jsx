@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';

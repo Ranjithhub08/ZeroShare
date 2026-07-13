@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import ActivityItem from './ActivityItem';
 import { 

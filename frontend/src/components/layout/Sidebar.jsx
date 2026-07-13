@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Shield, FileCheck, Activity, Settings } from 'lucide-react';

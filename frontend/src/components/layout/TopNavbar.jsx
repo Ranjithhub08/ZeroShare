@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import GlobalSearchBar from '@/components/ui/GlobalSearchBar';

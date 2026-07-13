@@ -28,7 +28,9 @@ import {
   Zap,
   Lock,
   History,
-  ShieldOff
+  ShieldOff,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -47,11 +49,32 @@ const ConsentRequests = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const [newConsentData, setNewConsentData] = useState({
+    requester_type: 'app',
     app_name: '',
+    requester_url: '',
     data_type: '',
     purpose: '',
-    duration: '30 Days' // Default duration
+    duration: '30 Days'
   });
+
+  // Live ML risk preview in New Consent modal
+  const [mlPreview, setMlPreview] = useState(null);
+  const [mlPreviewLoading, setMlPreviewLoading] = useState(false);
+
+  // Debounced ML score call
+  const mlDebounceRef = React.useRef(null);
+  const fetchMlPreview = React.useCallback((formData) => {
+    clearTimeout(mlDebounceRef.current);
+    if (!formData.data_type || !formData.purpose) { setMlPreview(null); return; }
+    mlDebounceRef.current = setTimeout(async () => {
+      setMlPreviewLoading(true);
+      try {
+        const res = await api.post('/ml/score', formData);
+        setMlPreview(res.data);
+      } catch { /* ML offline — ignore */ }
+      finally { setMlPreviewLoading(false); }
+    }, 600);
+  }, []);
 
   // Mock Recent Activity
   const recentActions = [
@@ -70,6 +93,11 @@ const ConsentRequests = () => {
     return { level: 'Low', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
   };
 
+  // Trigger ML preview whenever relevant form fields change
+  React.useEffect(() => {
+    if (isNewConsentModalOpen) fetchMlPreview(newConsentData);
+  }, [newConsentData.data_type, newConsentData.purpose, newConsentData.duration, newConsentData.requester_type, newConsentData.requester_url, isNewConsentModalOpen, fetchMlPreview]);
+
   // Pagination & Sorting State
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -79,18 +107,29 @@ const ConsentRequests = () => {
   const [sortDir, setSortDir] = useState('DESC');
 
   const columns = [
-    { 
-      header: 'Requestor', 
-      accessor: 'app_name', 
-      sortable: true, 
+    {
+      header: 'Requestor',
+      accessor: 'app_name',
+      sortable: true,
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md border bg-muted/50">
-            <AppWindow className="h-4 w-4 text-muted-foreground" />
+          <div className={cn("flex h-8 w-8 items-center justify-center rounded-md border bg-muted/50", row.requester_type === 'website' && "border-blue-500/30 bg-blue-500/10")}>
+            {row.requester_type === 'website'
+              ? <Globe className="h-4 w-4 text-blue-400" />
+              : <AppWindow className="h-4 w-4 text-muted-foreground" />}
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sm leading-none">{row.app_name}</span>
-            <span className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-medium">Verified App</span>
+            {row.requester_type === 'website' && row.requester_url ? (
+              <a href={row.requester_url} target="_blank" rel="noopener noreferrer"
+                className="text-[10px] text-blue-400 mt-0.5 hover:underline flex items-center gap-0.5 truncate max-w-[150px]"
+                onClick={e => e.stopPropagation()}>
+                {row.requester_url.replace(/^https?:\/\//, '')}
+                <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+              </a>
+            ) : (
+              <span className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-medium">App</span>
+            )}
           </div>
         </div>
       )
@@ -107,14 +146,21 @@ const ConsentRequests = () => {
     },
     { 
       header: 'Risk', 
-      accessor: 'risk_level', 
-      sortable: true, 
+      accessor: 'risk_level',
+      sortable: true,
       render: (row) => {
         const s = getRiskScore(row);
         return (
-          <Badge variant="outline" className={cn("font-bold text-[10px] uppercase tracking-wider px-2 py-0", s.color)}>
-            {s.level} Risk
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="outline" className={cn("font-bold text-[10px] uppercase tracking-wider px-2 py-0", s.color)}>
+              {s.level} Risk
+            </Badge>
+            {row.risk_score != null && (
+              <span className={cn("text-[10px] font-mono font-bold", s.color.split(' ')[0])}>
+                {row.risk_score}
+              </span>
+            )}
+          </div>
         );
       }
     },
@@ -325,12 +371,16 @@ const ConsentRequests = () => {
   };
 
   const handleCreateConsent = async () => {
-    if (!newConsentData.app_name || !newConsentData.data_type || !newConsentData.purpose) return;
+    const isWebsite = newConsentData.requester_type === 'website';
+    if (isWebsite && !newConsentData.requester_url) return;
+    if (!isWebsite && !newConsentData.app_name) return;
+    if (!newConsentData.data_type || !newConsentData.purpose) return;
     setLoading(true);
     try {
       await api.post('/consents', newConsentData);
       setIsNewConsentModalOpen(false);
-      setNewConsentData({ app_name: '', data_type: '', purpose: '', duration: '30 Days' });
+      setNewConsentData({ requester_type: 'app', app_name: '', requester_url: '', data_type: '', purpose: '', duration: '30 Days' });
+      setMlPreview(null);
       fetchConsents();
     } catch (err) {
       console.error('Failed to create consent', err);
@@ -551,13 +601,31 @@ const ConsentRequests = () => {
             <div className="flex flex-col gap-8 py-4">
                <div className="grid grid-cols-2 gap-8">
                   <div className="flex flex-col gap-1.5">
-                     <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Application</span>
-                     <div className="text-lg font-bold">{selectedRequest.app_name}</div>
+                     <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+                       {selectedRequest.requester_type === 'website' ? 'Website' : 'Application'}
+                     </span>
+                     <div className="flex items-center gap-2">
+                       {selectedRequest.requester_type === 'website'
+                         ? <Globe className="h-4 w-4 text-blue-400" />
+                         : <AppWindow className="h-4 w-4 text-primary" />}
+                       <span className="text-lg font-bold">{selectedRequest.app_name}</span>
+                     </div>
+                     {selectedRequest.requester_type === 'website' && selectedRequest.requester_url && (
+                       <a
+                         href={selectedRequest.requester_url}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="flex items-center gap-1 text-xs text-blue-400 hover:underline mt-0.5"
+                       >
+                         <ExternalLink className="h-3 w-3" />
+                         {selectedRequest.requester_url.replace(/^https?:\/\//, '')}
+                       </a>
+                     )}
                   </div>
                   <div className="flex flex-col gap-1.5">
                      <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Status</span>
                      <div>
-                        <Badge 
+                        <Badge
                           variant={selectedRequest.status === 'APPROVED' ? "default" : "destructive"}
                           className="px-3 py-0.5"
                         >
@@ -606,44 +674,123 @@ const ConsentRequests = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4 py-4">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Application Name</label>
-              <Input 
-                value={newConsentData.app_name}
-                onChange={e => setNewConsentData(p => ({ ...p, app_name: e.target.value }))}
-                placeholder="e.g., Nexus Identity Platform" 
-              />
+          <div className="flex flex-col gap-4 py-2">
+            {/* App / Website toggle */}
+            <div className="flex gap-1 p-1 rounded-lg bg-muted/40 border border-white/5">
+              <button type="button"
+                onClick={() => setNewConsentData(p => ({ ...p, requester_type: 'app', requester_url: '' }))}
+                className={cn('flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-semibold rounded-md transition-colors',
+                  newConsentData.requester_type === 'app' ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <AppWindow className="h-4 w-4" /> App
+              </button>
+              <button type="button"
+                onClick={() => setNewConsentData(p => ({ ...p, requester_type: 'website', app_name: '' }))}
+                className={cn('flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-semibold rounded-md transition-colors',
+                  newConsentData.requester_type === 'website' ? 'bg-blue-600 text-white' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <Globe className="h-4 w-4" /> Website
+              </button>
             </div>
+
+            {newConsentData.requester_type === 'app' ? (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Application Name</label>
+                <Input
+                  value={newConsentData.app_name}
+                  onChange={e => setNewConsentData(p => ({ ...p, app_name: e.target.value }))}
+                  placeholder="e.g., Nexus Identity Platform"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Website URL</label>
+                  <Input
+                    value={newConsentData.requester_url}
+                    onChange={e => setNewConsentData(p => ({ ...p, requester_url: e.target.value }))}
+                    placeholder="e.g., https://myshop.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Display Name</label>
+                  <Input
+                    value={newConsentData.app_name}
+                    onChange={e => setNewConsentData(p => ({ ...p, app_name: e.target.value }))}
+                    placeholder="e.g., MyShop"
+                  />
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Requested Data Type</label>
-              <Input 
+              <Input
                 value={newConsentData.data_type}
                 onChange={e => setNewConsentData(p => ({ ...p, data_type: e.target.value }))}
-                placeholder="e.g., Financial Audit History" 
+                placeholder="e.g., Financial Audit History"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Justification Purpose</label>
-              <Input 
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Purpose / Justification</label>
+              <Input
                 value={newConsentData.purpose}
                 onChange={e => setNewConsentData(p => ({ ...p, purpose: e.target.value }))}
-                placeholder="Legal compliance verification." 
+                placeholder="e.g., Legal compliance verification"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Access Expiry</label>
-              <Input 
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Access Duration</label>
+              <Input
                 value={newConsentData.duration}
                 onChange={e => setNewConsentData(p => ({ ...p, duration: e.target.value }))}
-                placeholder="e.g., 30 Days" 
+                placeholder="e.g., 30 Days"
               />
             </div>
-            
-            <Button 
-               className="mt-4 bg-primary hover:bg-primary/90 text-white w-full"
-               onClick={handleCreateConsent}
-               disabled={!newConsentData.app_name || !newConsentData.data_type || !newConsentData.purpose}
+
+            {/* Live ML Risk Preview */}
+            {(mlPreview || mlPreviewLoading) && (
+              <div className={cn(
+                "rounded-lg border p-3 text-xs space-y-1.5 transition-all",
+                mlPreview?.risk_level === 'high'   && "border-rose-500/30 bg-rose-500/10",
+                mlPreview?.risk_level === 'medium' && "border-amber-500/30 bg-amber-500/10",
+                mlPreview?.risk_level === 'low'    && "border-emerald-500/30 bg-emerald-500/10",
+                mlPreviewLoading && !mlPreview && "border-white/10 bg-muted/30 animate-pulse",
+              )}>
+                {mlPreviewLoading && !mlPreview && (
+                  <span className="text-muted-foreground">Analysing risk…</span>
+                )}
+                {mlPreview && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase tracking-widest text-[10px] text-muted-foreground">AI Risk Assessment</span>
+                      <span className={cn(
+                        "font-bold text-xs px-2 py-0.5 rounded-full",
+                        mlPreview.risk_level === 'high'   && "text-rose-400 bg-rose-500/20",
+                        mlPreview.risk_level === 'medium' && "text-amber-400 bg-amber-500/20",
+                        mlPreview.risk_level === 'low'    && "text-emerald-400 bg-emerald-500/20",
+                      )}>
+                        {mlPreview.risk_level?.toUpperCase()} · {mlPreview.score}/100
+                      </span>
+                    </div>
+                    <ul className="space-y-0.5 text-muted-foreground">
+                      {mlPreview.factors?.map((f, i) => <li key={i}>{f}</li>)}
+                    </ul>
+                    <div className="text-[10px] text-muted-foreground/60 pt-0.5">
+                      Confidence: {mlPreview.confidence}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <Button
+              className="mt-2 bg-primary hover:bg-primary/90 text-white w-full"
+              onClick={handleCreateConsent}
+              disabled={
+                !newConsentData.data_type || !newConsentData.purpose ||
+                (newConsentData.requester_type === 'app' ? !newConsentData.app_name : !newConsentData.requester_url)
+              }
             >
               Issue Consent Grant
             </Button>

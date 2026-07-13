@@ -6,6 +6,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+ENV VITE_API_BASE_URL=/api
 RUN npm run build
 
 # ── Stage 2: Serve with Nginx ────────────────────────────────────────────────

@@ -42,8 +42,23 @@ services:
       SMTP_FROM: ${SMTP_FROM}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
+      ML_SERVICE_URL: http://ml-service:8000
     env_file:
       - ./backend/.env
+
+  # ── ML Risk Scorer ───────────────────────────────────────────────────────────
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: zeroshare_ml
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_PATH: /ml-service/model/risk_model.json
+    volumes:
+      - mlmodel:/ml-service/model
 
   # ── Frontend ─────────────────────────────────────────────────────────────────
   frontend:
@@ -60,3 +75,5 @@ services:
 volumes:
   pgdata:
     name: zeroshare_pgdata
+  mlmodel:
+    name: zeroshare_mlmodel

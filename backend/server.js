@@ -54,6 +54,11 @@ const runMigrations = async () => {
     await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)`);
     await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS file_size INTEGER`);
     await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)`);
+    // App + Website support for consents
+    await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS requester_type VARCHAR(10) DEFAULT 'app'`);
+    await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS requester_url VARCHAR(500)`);
+    // ML risk score column
+    await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS risk_score INTEGER`);
     console.log('✅ Database migrations applied.');
   } catch (err) {
     console.error('❌ Migration error:', err.message);
@@ -86,6 +91,7 @@ const activityRoutes = require('./routes/activity.routes');
 const dataRoutes = require('./routes/data.routes');
 const searchRoutes = require('./routes/search.routes');
 const userRoutes = require('./routes/user.routes');
+const mlRoutes = require('./routes/ml.routes');
 
 // Route Mounting
 app.use('/api/auth', authRoutes);
@@ -97,6 +103,7 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/ml', mlRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -113,6 +120,45 @@ setInterval(async () => {
     console.error('[Auto-Expiry] Error:', err.message);
   }
 }, 5 * 60 * 1000);
+
+// ML Nightly Retrain job — runs every 24 hours, trains on real admin decisions
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+const retrainML = async () => {
+  try {
+    const db = require('./database/db');
+    const res = await db.query(
+      `SELECT data_type, purpose, duration, requester_type, requester_url, status
+       FROM consents WHERE status IN ('GRANTED','DENIED','REVOKED') ORDER BY updated_at DESC LIMIT 500`
+    );
+    if (res.rows.length < 10) { console.log('[ML Retrain] Not enough data yet, skipping.'); return; }
+    const samples = res.rows.map(r => ({
+      data_type: r.data_type,
+      purpose: r.purpose,
+      duration: r.duration,
+      requester_type: r.requester_type || 'app',
+      requester_url: r.requester_url || null,
+      label: r.status, // DENIED/REVOKED = risky, GRANTED = safe
+    }));
+    const body = JSON.stringify({ samples });
+    const req = http.request(
+      `${ML_SERVICE_URL}/train`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 30000 },
+      (resp) => {
+        let d = '';
+        resp.on('data', c => { d += c; });
+        resp.on('end', () => console.log('[ML Retrain]', d));
+      }
+    );
+    req.on('error', err => console.error('[ML Retrain] Error:', err.message));
+    req.write(body);
+    req.end();
+  } catch (err) {
+    console.error('[ML Retrain] Error:', err.message);
+  }
+};
+// Run retrain every 24 hours (and once at startup after 30s delay)
+setInterval(retrainML, 24 * 60 * 60 * 1000);
+setTimeout(retrainML, 30 * 1000);
 
 // Start HTTP + WebSocket Server
 const server = http.createServer(app);

@@ -1,6 +1,32 @@
 const db = require('../database/db');
 const notifService = require('./notification.service');
 const { sendEmail, templates } = require('./email.service');
+const http = require('http');
+
+// Call ML risk scoring microservice (non-blocking — falls back gracefully)
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+
+async function mlScore(payload) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify(payload);
+    const req = http.request(
+      `${ML_SERVICE_URL}/score`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 3000 },
+      (res) => {
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          try { resolve(JSON.parse(data)); }
+          catch { /* invalid JSON — use fallback */ resolve(null); }
+        });
+      }
+    );
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.write(body);
+    req.end();
+  });
+}
 
 // Parse duration string → expiry date (or null for Permanent)
 function calcExpiry(duration) {
@@ -18,20 +44,31 @@ function calcExpiry(duration) {
 }
 
 class ConsentService {
-  async createConsent(userId, { app_name, data_type, purpose, duration }) {
-    const risk_level = (() => {
+  async createConsent(userId, { app_name, data_type, purpose, duration, requester_type = 'app', requester_url = null }) {
+    const displayName = requester_type === 'website' ? (app_name || requester_url) : app_name;
+
+    // Ask ML service for risk score; fall back to keyword rules if unavailable
+    const mlResult = await mlScore({ app_name: displayName, data_type, purpose, duration, requester_type, requester_url });
+    let risk_level;
+    let risk_score = null;
+    if (mlResult && mlResult.risk_level) {
+      risk_level = mlResult.risk_level;
+      risk_score = mlResult.score;
+    } else {
+      // Fallback: keyword-based
       const t = data_type.toLowerCase();
-      if (t.includes('id') || t.includes('passport') || t.includes('medical')) return 'high';
-      if (t.includes('financial') || t.includes('resume') || t.includes('email')) return 'medium';
-      return 'low';
-    })();
+      if (t.includes('id') || t.includes('passport') || t.includes('medical')) risk_level = 'high';
+      else if (t.includes('financial') || t.includes('resume') || t.includes('email')) risk_level = 'medium';
+      else risk_level = 'low';
+    }
+
     const res = await db.query(
-      `INSERT INTO consents (user_id, app_name, data_type, purpose, duration, risk_level, status)
-       VALUES ($1,$2,$3,$4,$5,$6,'PENDING') RETURNING *`,
-      [userId, app_name, data_type, purpose, duration, risk_level]
+      `INSERT INTO consents (user_id, app_name, data_type, purpose, duration, risk_level, status, requester_type, requester_url, risk_score)
+       VALUES ($1,$2,$3,$4,$5,$6,'PENDING',$7,$8,$9) RETURNING *`,
+      [userId, displayName, data_type, purpose, duration, risk_level, requester_type, requester_url, risk_score]
     );
     await notifService.create(userId, 'Consent Request',
-      `New consent request from "${app_name}" for your ${data_type}.`);
+      `New consent request from "${displayName}" for your ${data_type}.`);
     return res.rows[0];
   }
 

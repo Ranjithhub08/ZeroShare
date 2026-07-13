@@ -50,6 +50,24 @@ exports.revokeConsent = async (req, res) => {
   }
 };
 
+exports.getHistory = async (req, res) => {
+  try {
+    const history = await consentService.getHistory(req.params.id, req.userId, req.userRole);
+    res.json({ success: true, data: history });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
+exports.getAccessLogs = async (req, res) => {
+  try {
+    const logs = await consentService.getAccessLogs(req.params.id, req.userId, req.userRole);
+    res.json({ success: true, data: logs });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
 exports.bulkAction = async (req, res) => {
   if (req.userRole !== 'admin')
     return res.status(403).json({ success: false, error: 'Admin only' });

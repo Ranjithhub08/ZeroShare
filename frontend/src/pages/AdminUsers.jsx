@@ -99,7 +99,7 @@ const AdminUsers = () => {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-5xl mx-auto space-y-6">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
@@ -120,16 +120,16 @@ const AdminUsers = () => {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="glass-card p-0 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="glass-card p-0 overflow-x-auto">
+          <table className="w-full text-sm min-w-[750px]">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
-                <th className="text-left px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">User</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Role</th>
-                <th className="text-center px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Consents</th>
-                <th className="text-center px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Data Records</th>
-                <th className="text-right px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Actions</th>
+                <th className="text-left px-4 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">User</th>
+                <th className="text-left px-4 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Email</th>
+                <th className="text-left px-4 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Role</th>
+                <th className="text-center px-4 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Consents</th>
+                <th className="text-center px-4 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Data</th>
+                <th className="text-right px-4 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -137,13 +137,13 @@ const AdminUsers = () => {
                 const isSelf = u.id === currentUser?.id;
                 return (
                   <tr key={u.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div
                         className="flex items-center gap-3 cursor-pointer group w-fit"
                         onClick={() => openUserDetail(u)}
                         title="Click to view user details"
                       >
-                        <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-sm group-hover:bg-primary/30 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-sm group-hover:bg-primary/30 transition-colors shrink-0">
                           {u.name?.charAt(0).toUpperCase()}
                         </div>
                         <span className="font-medium text-zinc-200 group-hover:text-primary transition-colors underline-offset-2 group-hover:underline">
@@ -152,8 +152,10 @@ const AdminUsers = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-zinc-400">{u.email}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 max-w-[200px]">
+                      <span className="text-zinc-400 truncate block" title={u.email}>{u.email}</span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Badge
                           variant="outline"
@@ -174,9 +176,9 @@ const AdminUsers = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center font-mono text-zinc-300">{u.consent_count}</td>
-                    <td className="px-6 py-4 text-center font-mono text-zinc-300">{u.data_count}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4 text-center font-mono text-zinc-300">{u.consent_count}</td>
+                    <td className="px-4 py-4 text-center font-mono text-zinc-300">{u.data_count}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           size="sm"

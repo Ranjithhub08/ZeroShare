@@ -18,6 +18,7 @@ class DataService {
     const selectValue = isAdmin ? `'[ENCRYPTED]' as value` : `ud.value`;
     const rows = await db.query(
       `SELECT ud.id, ud.user_id, ud.data_type, ud.created_at, ud.updated_at,
+       ud.record_type, ud.file_name, ud.file_size, ud.file_url,
        u.name as user_name, ${selectValue}
        FROM user_data ud
        LEFT JOIN users u ON ud.user_id = u.id

@@ -481,15 +481,34 @@ const DataVault = () => {
                 </div>
               </div>
 
-              {/* Value */}
-              <div className="flex flex-col gap-2">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Stored Value</span>
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 min-h-[80px]">
-                  <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
-                    {viewRecord.value}
-                  </p>
+              {/* Value or File */}
+              {viewRecord.record_type === 'file' ? (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Stored File</span>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-3">
+                      {getFileIcon(viewRecord.file_name)}
+                      <div>
+                        <p className="text-sm font-semibold">{viewRecord.file_name}</p>
+                        <p className="text-xs text-muted-foreground">{formatBytes(viewRecord.file_size)}</p>
+                      </div>
+                    </div>
+                    <Button size="sm" className="gap-2" onClick={() => handleDownloadFile(viewRecord)}>
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Stored Value</span>
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 min-h-[80px]">
+                    <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                      {viewRecord.value}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />

@@ -35,7 +35,9 @@ import {
   Eye,
   EyeOff,
   FileText,
-  Download
+  Download,
+  Monitor,
+  Trash2
 } from 'lucide-react';
 
 const Settings = () => {
@@ -61,6 +63,16 @@ const Settings = () => {
     system_alerts: false
   });
 
+  // 2FA
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false);
+  const [twoFALoading, setTwoFALoading] = useState(false);
+
+  // Sessions
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -70,6 +82,7 @@ const Settings = () => {
       const res = await api.get('/user/profile');
       if (res.data.success) {
         setProfile(res.data.data);
+        setTwoFAEnabled(!!res.data.data.two_fa_enabled);
       }
     } catch (error) {
       console.error('Failed to fetch profile', error);
@@ -77,6 +90,78 @@ const Settings = () => {
       setLoading(false);
     }
   };
+
+  const handleToggle2FA = async (val) => {
+    setTwoFALoading(true);
+    try {
+      await api.post('/auth/2fa/toggle', { enable: val });
+      setTwoFAEnabled(val);
+    } catch (err) {
+      console.error('2FA toggle error', err);
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleOpenSessions = async () => {
+    setSessionsOpen(true);
+    setSessionsLoading(true);
+    try {
+      const res = await api.get('/auth/sessions');
+      if (res.data.success) {
+        setSessions(res.data.data);
+        setCurrentSessionId(res.data.currentSessionId);
+      }
+    } catch (err) {
+      console.error('Sessions fetch error', err);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const handleRevokeSession = async (id) => {
+    try {
+      await api.delete(`/auth/sessions/${id}`);
+      setSessions(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error('Revoke session error', err);
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    try {
+      await api.delete('/auth/sessions/all');
+      // Reload sessions — only current should remain
+      const res = await api.get('/auth/sessions');
+      if (res.data.success) setSessions(res.data.data);
+    } catch (err) {
+      console.error('Revoke all error', err);
+    }
+  };
+
+  function parseDevice(ua) {
+    if (!ua || ua === 'unknown') return 'Unknown Device';
+    if (/mobile/i.test(ua)) {
+      if (/iphone/i.test(ua)) return 'iPhone';
+      if (/android/i.test(ua)) return 'Android';
+      return 'Mobile';
+    }
+    if (/edg/i.test(ua)) return 'Edge';
+    if (/chrome/i.test(ua)) return 'Chrome';
+    if (/firefox/i.test(ua)) return 'Firefox';
+    if (/safari/i.test(ua)) return 'Safari';
+    return 'Browser';
+  }
+
+  function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
 
   const handleUpdateProfile = async (data) => {
     setSaveLoading(true);
@@ -261,27 +346,37 @@ const Settings = () => {
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </Button>
 
-              <Button variant="ghost" className="w-full justify-between h-12 px-2 hover:bg-muted/50 group" disabled>
+              <div className="flex items-center justify-between h-12 px-2">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center group-hover:bg-background transition-colors">
+                  <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center">
                     <Smartphone className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="text-sm font-semibold">Two-Factor Auth</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Enable MFA layer</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                      {twoFAEnabled ? 'OTP email on login' : 'Extra security layer'}
+                    </span>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-500">Coming soon</Badge>
-              </Button>
+                <Switch
+                  checked={twoFAEnabled}
+                  onCheckedChange={handleToggle2FA}
+                  disabled={twoFALoading}
+                />
+              </div>
 
-              <Button variant="ghost" className="w-full justify-between h-12 px-2 hover:bg-muted/50 group" disabled>
+              <Button
+                variant="ghost"
+                className="w-full justify-between h-12 px-2 hover:bg-muted/50 group"
+                onClick={handleOpenSessions}
+              >
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center group-hover:bg-background transition-colors">
                     <ShieldAlert className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="text-sm font-semibold">Active Sessions</span>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Session management</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Manage devices</span>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -328,6 +423,60 @@ const Settings = () => {
           </Button>
         </motion.div>
       </div>
+
+      {/* Active Sessions Dialog */}
+      <Dialog open={sessionsOpen} onOpenChange={setSessionsOpen}>
+        <DialogContent className="sm:max-w-lg bg-zinc-950 border-white/10">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Monitor className="h-4 w-4 text-primary" /> Active Sessions
+            </DialogTitle>
+            <DialogDescription>Devices currently signed in to your account.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2 max-h-80 overflow-y-auto">
+            {sessionsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : sessions.length === 0 ? (
+              <p className="text-center text-muted-foreground text-sm py-6">No active sessions found.</p>
+            ) : sessions.map(s => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Monitor className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      {parseDevice(s.user_agent)}
+                      {s.id === currentSessionId && (
+                        <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-500">Current</Badge>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">{s.ip_address} · Last active {timeAgo(s.last_used_at)}</p>
+                  </div>
+                </div>
+                {s.id !== currentSessionId && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                    onClick={() => handleRevokeSession(s.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {sessions.filter(s => s.id !== currentSessionId).length > 0 && (
+              <Button variant="destructive" size="sm" onClick={handleRevokeAll} className="w-full sm:w-auto">
+                Sign out all other devices
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setSessionsOpen(false)} className="w-full sm:w-auto">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Change Password Dialog */}
       <Dialog open={pwOpen} onOpenChange={setPwOpen}>

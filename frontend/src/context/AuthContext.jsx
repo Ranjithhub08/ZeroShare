@@ -10,6 +10,18 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
+    if (res.data.requires2FA) {
+      return { requires2FA: true, tempToken: res.data.tempToken, email: res.data.email };
+    }
+    const { token, user } = res.data.data;
+    localStorage.setItem('zs_token', token);
+    localStorage.setItem('zs_user', JSON.stringify(user));
+    setUser(user);
+    return user;
+  }, []);
+
+  const verifyOTP = useCallback(async (tempToken, otp) => {
+    const res = await api.post('/auth/verify-otp', { tempToken, otp });
     const { token, user } = res.data.data;
     localStorage.setItem('zs_token', token);
     localStorage.setItem('zs_user', JSON.stringify(user));
@@ -35,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{
       user,
-      login, register, logout,
+      login, verifyOTP, register, logout,
       isAuthenticated: !!user,
       isAdmin: user?.role === 'admin',
     }}>

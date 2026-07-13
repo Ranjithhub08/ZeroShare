@@ -38,11 +38,9 @@ async function getTransporter() {
 
 async function sendEmail({ to, subject, html }) {
   const t = await getTransporter();
-  // TEST_EMAIL overrides recipient — all emails go to your inbox during dev/testing
-  const recipient = process.env.TEST_EMAIL || to;
   const info = await t.sendMail({
     from: process.env.SMTP_FROM || '"ZeroShare" <noreply@zeroshare.io>',
-    to: recipient,
+    to,
     subject,
     html,
   });
@@ -50,7 +48,7 @@ async function sendEmail({ to, subject, html }) {
   if (testAccount) {
     console.log(`[Email] Ethereal preview: ${nodemailer.getTestMessageUrl(info)}`);
   } else {
-    console.log(`[Email] Sent to ${recipient} — subject: "${subject}"`);
+    console.log(`[Email] Sent to ${to} — subject: "${subject}"`);
   }
   return info;
 }
@@ -100,6 +98,23 @@ const templates = {
         <p>Your consent for <strong>${appName}</strong> (${dataType}) has <span style="color:#f87171">expired</span> and been automatically revoked.</p>
         <hr style="border-color:#27272a;margin:24px 0"/>
         <p style="font-size:12px;color:#52525b">ZeroShare — Your data, your rules.</p>
+      </div>`
+  }),
+  otpVerification: (name, otp) => ({
+    subject: '🔐 Your ZeroShare verification code',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;">
+        <h2 style="color:#7c3aed;margin-top:0;">ZeroShare</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Use the code below to complete your login. This code expires in <strong>10 minutes</strong>.</p>
+        <div style="text-align:center;margin:32px 0;">
+          <div style="display:inline-block;background:#f5f3ff;border:2px solid #7c3aed;border-radius:12px;padding:20px 40px;">
+            <span style="font-size:40px;font-weight:bold;color:#7c3aed;letter-spacing:10px;">${otp}</span>
+          </div>
+        </div>
+        <p style="font-size:13px;color:#6b7280;">Never share this code with anyone. ZeroShare will never ask for your verification code.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+        <p style="font-size:12px;color:#9ca3af;">ZeroShare — Your data, your rules.</p>
       </div>`
   }),
   resetPassword: (name, resetUrl) => ({

@@ -59,7 +59,8 @@ describe('Core JS utilities', () => {
   });
 
   it('handles null coalescing', () => {
-    const val = null ?? 'default';
+    const maybeNull = null;
+    const val = maybeNull ?? 'default';
     expect(val).toBe('default');
   });
 

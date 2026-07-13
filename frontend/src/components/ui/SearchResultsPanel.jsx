@@ -2,7 +2,6 @@ import React from 'react';
 import SearchResultItem from './SearchResultItem';
 import { Card } from '@/components/ui/card';
 import { Database, Shield, Activity, Search } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 const SearchResultsPanel = ({ results, query, onResultClick }) => {
   const hasResults = Object.values(results).some(arr => arr.length > 0);

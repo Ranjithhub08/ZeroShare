@@ -3,7 +3,7 @@ import { Bell } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);

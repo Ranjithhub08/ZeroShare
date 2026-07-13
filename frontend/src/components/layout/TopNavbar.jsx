@@ -1,6 +1,5 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import GlobalSearchBar from '@/components/ui/GlobalSearchBar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { 

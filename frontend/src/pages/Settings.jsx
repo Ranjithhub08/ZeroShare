@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import ProfileCard from '../components/ui/ProfileCard';
 import { 
   Card, 
@@ -21,7 +20,6 @@ import {
   ChevronRight,
   LogOut
 } from 'lucide-react';
-import { cn } from "@/lib/utils";
 
 const Settings = () => {
   const [profile, setProfile] = useState(null);

@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, Shield, Activity, ChevronRight } from 'lucide-react';
-import { cn } from "@/lib/utils";
 
 const SearchResultItem = ({ item, type, onClick }) => {
   const navigate = useNavigate();

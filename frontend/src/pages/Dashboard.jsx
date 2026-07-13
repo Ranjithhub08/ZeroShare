@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars -- used in JSX member expressions (motion.div etc)
 import { 
   Card, 
   CardContent, 
@@ -97,7 +97,7 @@ const Dashboard = () => {
         consent_activity_over_time: generateTrendData(days)
       }));
     }
-  }, [chartFilter]);
+  }, [chartFilter, loading]);
 
   if (loading) {
     return (

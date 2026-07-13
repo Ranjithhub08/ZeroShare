@@ -49,6 +49,11 @@ const runMigrations = async () => {
         changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `);
+    // File upload columns for user_data
+    await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS record_type VARCHAR(10) DEFAULT 'text'`);
+    await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)`);
+    await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS file_size INTEGER`);
+    await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)`);
     console.log('✅ Database migrations applied.');
   } catch (err) {
     console.error('❌ Migration error:', err.message);
@@ -68,7 +73,7 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Serve uploaded files (avatars)
+// Serve uploaded files (avatars + data files)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Route Imports

@@ -20,7 +20,11 @@ import {
   ExternalLink,
   ShieldCheck,
   Loader2,
-  X
+  X,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  Upload,
 } from 'lucide-react';
 import {
   Dialog,
@@ -50,8 +54,10 @@ const DataVault = () => {
 
   // Add Data Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addTab, setAddTab] = useState('text'); // 'text' | 'file'
   const [newDataType, setNewDataType] = useState('');
   const [newDataValue, setNewDataValue] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -128,19 +134,28 @@ const DataVault = () => {
     }
   };
 
+  const resetAddModal = () => {
+    setNewDataType(''); setNewDataValue(''); setSelectedFile(null);
+    setAddError(''); setAddTab('text');
+  };
+
   const handleAddData = async (e) => {
     e.preventDefault();
-    if (!newDataType || !newDataValue.trim()) {
-      setAddError('Both data type and value are required.');
-      return;
-    }
-    setAddLoading(true);
-    setAddError('');
+    if (!newDataType) { setAddError('Please select a data type.'); return; }
+    if (addTab === 'text' && !newDataValue.trim()) { setAddError('Value is required.'); return; }
+    if (addTab === 'file' && !selectedFile) { setAddError('Please select a file.'); return; }
+    setAddLoading(true); setAddError('');
     try {
-      await api.post('/data', { data_type: newDataType, value: newDataValue.trim() });
+      if (addTab === 'file') {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('data_type', newDataType);
+        await api.post('/data/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      } else {
+        await api.post('/data', { data_type: newDataType, value: newDataValue.trim() });
+      }
       setIsAddModalOpen(false);
-      setNewDataType('');
-      setNewDataValue('');
+      resetAddModal();
       setPage(1);
       fetchData();
     } catch (err) {
@@ -148,6 +163,35 @@ const DataVault = () => {
     } finally {
       setAddLoading(false);
     }
+  };
+
+  const handleDownloadFile = async (row) => {
+    try {
+      const res = await api.get(`/data/${row.id}/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = row.file_name || row.value;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch { alert('Download failed.'); }
+  };
+
+  const getFileIcon = (name) => {
+    if (!name) return <FileText className="h-3.5 w-3.5" />;
+    const ext = name.split('.').pop()?.toLowerCase();
+    if (['png','jpg','jpeg','webp'].includes(ext)) return <FileImage className="h-3.5 w-3.5 text-blue-400" />;
+    if (['xls','xlsx','csv'].includes(ext)) return <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />;
+    return <FileText className="h-3.5 w-3.5 text-amber-400" />;
+  };
+
+  const formatBytes = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const [exportLoading, setExportLoading] = useState(false);
@@ -218,9 +262,17 @@ const DataVault = () => {
       render: (row) => (
         isAdmin
           ? <span className="text-xs font-mono text-amber-500/70 tracking-widest select-none">••••••••••••</span>
-          : <span className="text-xs text-muted-foreground font-mono">
-              {row.value ? `${row.value.substring(0, 20)}${row.value.length > 20 ? '…' : ''}` : '—'}
-            </span>
+          : row.record_type === 'file'
+            ? <div className="flex items-center gap-1.5">
+                {getFileIcon(row.file_name)}
+                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={row.file_name}>
+                  {row.file_name}
+                </span>
+                <span className="text-[10px] text-muted-foreground/50">{formatBytes(row.file_size)}</span>
+              </div>
+            : <span className="text-xs text-muted-foreground font-mono">
+                {row.value ? `${row.value.substring(0, 20)}${row.value.length > 20 ? '…' : ''}` : '—'}
+              </span>
       )
     },
     {
@@ -264,7 +316,18 @@ const DataVault = () => {
       accessor: 'actions',
       render: (row) => (
         <div className="flex justify-end gap-1">
-          {!isAdmin && (
+          {!isAdmin && row.record_type === 'file' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-emerald-400 hover:bg-emerald-500/10"
+              onClick={() => handleDownloadFile(row)}
+              title="Download file"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
+          {!isAdmin && row.record_type !== 'file' && (
             <Button
               variant="ghost"
               size="icon"
@@ -442,7 +505,7 @@ const DataVault = () => {
       </Dialog>
 
       {/* Add Data Modal */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+      <Dialog open={isAddModalOpen} onOpenChange={(v) => { setIsAddModalOpen(v); if (!v) resetAddModal(); }}>
         <DialogContent className="max-w-md bg-card border-primary/20 shadow-[0_0_50px_rgba(168,85,247,0.15)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-bold">
@@ -450,11 +513,29 @@ const DataVault = () => {
               Add Data to Vault
             </DialogTitle>
             <DialogDescription className="text-muted-foreground/80">
-              Securely store a new data record. Only you can access it.
+              Securely store a text record or upload a document/file.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleAddData} className="flex flex-col gap-5 py-4">
+          {/* Tab switcher */}
+          <div className="flex gap-1 p-1 rounded-lg bg-muted/40 border border-white/5">
+            <button
+              type="button"
+              onClick={() => { setAddTab('text'); setAddError(''); }}
+              className={cn('flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors', addTab === 'text' ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground')}
+            >
+              Text / Value
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAddTab('file'); setAddError(''); }}
+              className={cn('flex-1 py-1.5 text-sm font-semibold rounded-md transition-colors', addTab === 'file' ? 'bg-primary text-white' : 'text-muted-foreground hover:text-foreground')}
+            >
+              Upload File
+            </button>
+          </div>
+
+          <form onSubmit={handleAddData} className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <Label htmlFor="data-type">Data Type</Label>
               <select
@@ -471,18 +552,63 @@ const DataVault = () => {
               </select>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="data-value">Value</Label>
-              <textarea
-                id="data-value"
-                value={newDataValue}
-                onChange={(e) => setNewDataValue(e.target.value)}
-                required
-                placeholder="Enter the data value to securely store..."
-                rows={4}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
+            {addTab === 'text' ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="data-value">Value</Label>
+                <textarea
+                  id="data-value"
+                  value={newDataValue}
+                  onChange={(e) => setNewDataValue(e.target.value)}
+                  placeholder="Enter the data value to securely store..."
+                  rows={4}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 resize-none text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Label>File</Label>
+                <label
+                  htmlFor="vault-file-input"
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
+                    selectedFile ? 'border-primary/50 bg-primary/5' : 'border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/30'
+                  )}
+                >
+                  {selectedFile ? (
+                    <>
+                      {getFileIcon(selectedFile.name)}
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-foreground">{selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatBytes(selectedFile.size)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-xs text-destructive hover:underline"
+                        onClick={(e) => { e.preventDefault(); setSelectedFile(null); }}
+                      >
+                        Remove
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground/50" />
+                      <div className="text-center">
+                        <p className="text-sm font-semibold">Click to upload</p>
+                        <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, PNG, JPG</p>
+                        <p className="text-xs text-muted-foreground">Max 10MB</p>
+                      </div>
+                    </>
+                  )}
+                  <input
+                    id="vault-file-input"
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.webp"
+                    onChange={(e) => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); }}
+                  />
+                </label>
+              </div>
+            )}
 
             {addError && (
               <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
@@ -491,10 +617,10 @@ const DataVault = () => {
             )}
 
             <DialogFooter className="flex gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={addLoading}>
+              <Button type="button" variant="outline" onClick={() => { setIsAddModalOpen(false); resetAddModal(); }} disabled={addLoading}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={addLoading || !newDataType || !newDataValue.trim()}>
+              <Button type="submit" disabled={addLoading || !newDataType || (addTab === 'text' ? !newDataValue.trim() : !selectedFile)}>
                 {addLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Storing...</> : 'Store Securely'}
               </Button>
             </DialogFooter>

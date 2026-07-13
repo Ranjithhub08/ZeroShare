@@ -20,7 +20,7 @@ const NotificationBell = () => {
         setNotifications(res.data.data);
         setUnreadCount(res.data.unread ?? 0);
       }
-    } catch {}
+    } catch { /* network error — fail silently */ }
   }, []);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const NotificationBell = () => {
       await api.patch('/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
       setUnreadCount(0);
-    } catch {}
+    } catch { /* noop */ }
   };
 
   const handleMarkOneRead = async (id) => {
@@ -68,7 +68,7 @@ const NotificationBell = () => {
       await api.patch(`/notifications/${id}/read`);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, status: 'read' } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch {}
+    } catch { /* noop */ }
   };
 
   return (

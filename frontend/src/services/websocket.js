@@ -11,7 +11,7 @@ export function connect(token) {
     try {
       const msg = JSON.parse(event.data);
       listeners.forEach(fn => fn(msg));
-    } catch {}
+    } catch { /* invalid JSON — ignore */ }
   };
 
   ws.onclose = () => {

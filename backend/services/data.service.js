@@ -34,6 +34,14 @@ class DataService {
     return res.rows[0];
   }
 
+  async exportData(userId) {
+    const res = await db.query(
+      `SELECT id, data_type, value, created_at FROM user_data WHERE user_id=$1 ORDER BY created_at DESC`,
+      [userId]
+    );
+    return res.rows;
+  }
+
   async deleteData(id, userId, role) {
     const where = role === 'admin' ? 'WHERE id = $1' : 'WHERE id = $1 AND user_id = $2';
     const params = role === 'admin' ? [id] : [id, userId];

@@ -17,7 +17,9 @@ import {
   Activity,
   ArrowRight,
   Users,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Download
 } from 'lucide-react';
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -224,6 +226,63 @@ const Dashboard = () => {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Privacy Risk Score — user only */}
+      {!isAdmin && stats.privacy_risk_score && (() => {
+        const prs = stats.privacy_risk_score;
+        const gradeColor =
+          prs.grade === 'Excellent' ? { text: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', bar: '#34d399' } :
+          prs.grade === 'Good'      ? { text: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/30',    bar: '#60a5fa' } :
+          prs.grade === 'Fair'      ? { text: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/30',   bar: '#fbbf24' } :
+                                      { text: 'text-rose-400',    bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    bar: '#f87171' };
+        return (
+          <motion.div variants={itemVariants} className="glass-card p-6 flex flex-col md:flex-row items-center gap-8">
+            {/* Score circle */}
+            <div className="flex-shrink-0 relative flex items-center justify-center">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+                <circle cx="60" cy="60" r="50" fill="none" stroke={gradeColor.bar} strokeWidth="10"
+                  strokeDasharray={`${prs.score * 3.14} 314`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 60 60)"
+                  style={{ transition: 'stroke-dasharray 1s ease-out' }}
+                />
+              </svg>
+              <div className="absolute flex flex-col items-center">
+                <span className={`text-3xl font-bold ${gradeColor.text}`}>{prs.score}</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">/100</span>
+              </div>
+            </div>
+            {/* Grade + breakdown */}
+            <div className="flex-1 space-y-4">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <Lock className={`h-4 w-4 ${gradeColor.text}`} />
+                  <h2 className="text-lg font-semibold text-white">Privacy Risk Score</h2>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${gradeColor.bg} ${gradeColor.border} ${gradeColor.text}`}>
+                    {prs.grade}
+                  </span>
+                </div>
+                <p className="text-sm text-zinc-400">Your current data privacy health based on active consents and stored data.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1 p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                  <span className="text-2xl font-bold text-rose-400">{prs.high_risk_consents}</span>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider">High-Risk Consents</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                  <span className="text-2xl font-bold text-amber-400">{prs.medium_risk_consents}</span>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Medium-Risk Consents</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                  <span className="text-2xl font-bold text-blue-400">{prs.sensitive_records}</span>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Sensitive Records</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* Charts Row */}
       <motion.div variants={itemVariants} className="grid grid-cols-12 gap-6">

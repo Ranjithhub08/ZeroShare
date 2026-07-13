@@ -150,29 +150,26 @@ const DataVault = () => {
     }
   };
 
-  const downloadCSV = () => {
-    const headers = ['ID', 'Type', 'Status', 'Registered Date'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredData.map(row =>
-        [
-          row.id,
-          row.data_type,
-          'ACTIVE',
-          new Date(row.created_at || Date.now()).toLocaleDateString()
-        ].map(str => `"${str}"`).join(',')
-      )
-    ].join('\n');
+  const [exportLoading, setExportLoading] = useState(false);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'ZeroShare_DataVault_Export.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExport = async (format = 'json') => {
+    setExportLoading(true);
+    try {
+      const res = await api.get(`/data/export?format=${format}`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `zeroshare-export.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const filteredData = data.filter(row => {
@@ -319,9 +316,18 @@ const DataVault = () => {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="gap-2 bg-card" onClick={downloadCSV} disabled={filteredData.length === 0}>
-              <Download className="h-4 w-4" /> Export CSV
-            </Button>
+            {!isAdmin && (
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-2 bg-card" onClick={() => handleExport('json')} disabled={exportLoading || total === 0}>
+                  {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  JSON
+                </Button>
+                <Button variant="outline" className="gap-2 bg-card" onClick={() => handleExport('csv')} disabled={exportLoading || total === 0}>
+                  {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  CSV
+                </Button>
+              </div>
+            )}
             {!isAdmin && (
               <Button
                 className="gap-2 shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]"

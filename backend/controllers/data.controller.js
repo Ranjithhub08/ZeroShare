@@ -21,6 +21,30 @@ exports.addData = async (req, res) => {
   }
 };
 
+exports.exportData = async (req, res) => {
+  try {
+    const { format = 'json' } = req.query;
+    // Admin cannot export — users only
+    if (req.userRole === 'admin')
+      return res.status(403).json({ success: false, error: 'Admin cannot export user data' });
+    const result = await dataService.exportData(req.userId);
+    if (format === 'csv') {
+      const header = 'id,data_type,value,created_at\n';
+      const rows = result.map(r =>
+        `${r.id},"${r.data_type}","${String(r.value).replace(/"/g,'""')}","${r.created_at}"`
+      ).join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="zeroshare-export.csv"');
+      return res.send(header + rows);
+    }
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="zeroshare-export.json"');
+    res.json({ exported_at: new Date().toISOString(), records: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Export failed' });
+  }
+};
+
 exports.deleteData = async (req, res) => {
   try {
     await dataService.deleteData(req.params.id, req.userId, req.userRole);

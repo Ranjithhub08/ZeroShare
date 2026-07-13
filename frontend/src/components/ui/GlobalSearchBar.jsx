@@ -3,6 +3,7 @@ import { Search, X, Loader2, Command } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SearchResultsPanel from './SearchResultsPanel';
 import { Input } from "@/components/ui/input";
+import api from '@/services/api';
 
 const GlobalSearchBar = () => {
   const [query, setQuery] = useState('');
@@ -26,10 +27,9 @@ const GlobalSearchBar = () => {
       if (query.trim().length >= 2) {
         setLoading(true);
         try {
-          const res = await fetch(`http://localhost:5001/api/search?q=${encodeURIComponent(query)}`);
-          const json = await res.json();
-          if (json.success) {
-            setResults(json.results);
+          const res = await api.get('/search', { params: { q: query } });
+          if (res.data.success) {
+            setResults(res.data.results);
             setIsOpen(true);
           }
         } catch (error) {

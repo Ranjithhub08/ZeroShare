@@ -114,22 +114,53 @@ const ConsentRequests = () => {
         );
       }
     },
-    { 
-      header: 'Timeline', 
-      accessor: 'duration', 
-      sortable: true, 
+    {
+      header: 'Timeline',
+      accessor: 'duration',
+      sortable: true,
       render: (row) => {
         const isGranted = row.status === 'GRANTED';
+        const expiresAt = row.expires_at ? new Date(row.expires_at) : null;
+        const now = new Date();
+        const msLeft = expiresAt ? expiresAt - now : null;
+        const daysLeft = msLeft ? Math.ceil(msLeft / (1000 * 60 * 60 * 24)) : null;
+        const isExpiringSoon = daysLeft !== null && daysLeft <= 7 && daysLeft > 0;
+        const isExpired = daysLeft !== null && daysLeft <= 0;
+
         return (
-          <div className="flex flex-col gap-1.5 min-w-[120px]">
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
             <div className="flex items-center justify-between text-[10px] font-bold tracking-tight">
                <span className="flex items-center gap-1 text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   {row.duration}
                </span>
-               {isGranted && <span className="text-primary italic">Active</span>}
+               {isGranted && !expiresAt && <span className="text-primary italic">Permanent</span>}
             </div>
-            {isGranted && (
+            {isGranted && expiresAt && (
+              <div className="flex flex-col gap-1">
+                <span className={cn(
+                  "text-[10px] font-semibold",
+                  isExpired ? "text-rose-500" : isExpiringSoon ? "text-amber-400" : "text-emerald-400"
+                )}>
+                  {isExpired
+                    ? "Expired"
+                    : isExpiringSoon
+                    ? `Expires in ${daysLeft}d`
+                    : `Expires ${expiresAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}`}
+                </span>
+                {!isExpired && (
+                  <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: isExpiringSoon ? `${(daysLeft/7)*100}%` : '70%' }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      className={cn("h-full shadow-sm", isExpiringSoon ? "bg-amber-400" : "bg-primary shadow-[0_0_10px_rgba(168,85,247,0.5)]")}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {isGranted && !expiresAt && (
                <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}

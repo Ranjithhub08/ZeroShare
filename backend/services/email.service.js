@@ -55,6 +55,21 @@ async function sendEmail({ to, subject, html }) {
 
 // Email templates
 const templates = {
+  accountDeleted: (name) => ({
+    subject: 'Your ZeroShare account has been deleted',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;">
+        <h2 style="color:#7c3aed;margin-top:0;">ZeroShare</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Your ZeroShare account and all associated data have been <strong>permanently deleted</strong> as requested.</p>
+        <div style="margin:24px 0;padding:16px;background:#fef2f2;border-left:4px solid #ef4444;border-radius:6px;">
+          <p style="margin:0;font-size:14px;color:#b91c1c;">This action is irreversible. All your consents, data records, and audit logs have been wiped.</p>
+        </div>
+        <p style="font-size:13px;color:#6b7280;">If you didn't request this deletion, please contact support immediately.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+        <p style="font-size:12px;color:#9ca3af;">ZeroShare — Your data, your rules.</p>
+      </div>`
+  }),
   welcomeEmail: (name) => ({
     subject: '🎉 Welcome to ZeroShare — Your data, your rules',
     html: `

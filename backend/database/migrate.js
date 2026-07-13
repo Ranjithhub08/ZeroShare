@@ -31,6 +31,24 @@ async function migrate() {
     )
   `);
 
+  // Consent history table
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS consent_history (
+      id SERIAL PRIMARY KEY,
+      consent_id INTEGER REFERENCES consents(id) ON DELETE CASCADE,
+      status VARCHAR(20) NOT NULL,
+      changed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      note TEXT,
+      changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `);
+
+  // Renewal reminder flag on consents
+  await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE`);
+
+  // Avatar URL on users
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)`);
+
   console.log('✅ Migrations done.');
   process.exit(0);
 }

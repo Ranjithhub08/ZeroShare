@@ -2,7 +2,7 @@ const db = require('../database/db');
 const bcrypt = require('bcrypt');
 
 exports.getProfile = async (userId) => {
-  const res = await db.query('SELECT id, name, email, role, two_fa_enabled, created_at FROM users WHERE id = $1', [userId]);
+  const res = await db.query('SELECT id, name, email, role, two_fa_enabled, avatar_url, created_at FROM users WHERE id = $1', [userId]);
   return res.rows[0];
 };
 

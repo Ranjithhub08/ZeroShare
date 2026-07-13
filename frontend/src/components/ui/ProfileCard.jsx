@@ -56,6 +56,7 @@ const ProfileCard = ({ profile, onUpdate, loading }) => {
             <div className="flex-shrink-0 mx-auto md:mx-0">
               <AvatarUploader
                 currentAvatar={formData.avatar_url}
+                userName={formData.name}
                 onUpload={handleAvatarUpdate}
               />
             </div>

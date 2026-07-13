@@ -37,7 +37,10 @@ import {
   FileText,
   Download,
   Monitor,
-  Trash2
+  Trash2,
+  AlertTriangle,
+  Package,
+  Loader2,
 } from 'lucide-react';
 
 const Settings = () => {
@@ -66,6 +69,13 @@ const Settings = () => {
   // 2FA
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [twoFALoading, setTwoFALoading] = useState(false);
+
+  // Export & Delete
+  const [exportLoading, setExportLoading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Sessions
   const [sessionsOpen, setSessionsOpen] = useState(false);
@@ -221,6 +231,42 @@ const Settings = () => {
       console.error('Report download failed', err);
     } finally {
       setReportLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExportLoading(true);
+    try {
+      const res = await api.get('/user/export', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'zeroshare-my-data.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed', err);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== profile?.email) {
+      setDeleteError('Email does not match. Please type your exact email.');
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await api.delete('/user/me');
+      logout();
+      navigate('/login');
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete account.');
+      setDeleteLoading(false);
     }
   };
 
@@ -392,7 +438,7 @@ const Settings = () => {
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center group-hover:bg-background transition-colors">
                       {reportLoading
-                        ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         : <FileText className="h-4 w-4 text-muted-foreground" />}
                     </div>
                     <div className="flex flex-col items-start">
@@ -403,14 +449,73 @@ const Settings = () => {
                   <Download className="h-4 w-4 text-muted-foreground" />
                 </Button>
               )}
+
+              {!isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between h-12 px-2 hover:bg-muted/50 group"
+                  onClick={handleExportData}
+                  disabled={exportLoading}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center group-hover:bg-background transition-colors">
+                      {exportLoading
+                        ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        : <Package className="h-4 w-4 text-muted-foreground" />}
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-semibold">Export My Data</span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Download ZIP</span>
+                    </div>
+                  </div>
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
+        {!isAdmin && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.35 }}
+          >
+            <Card className="border border-destructive/30 bg-card">
+              <CardHeader>
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
+                </div>
+                <CardDescription>These actions are irreversible. Please proceed with caution.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+                  <div>
+                    <p className="text-sm font-semibold">Delete Account</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Permanently delete your account and all associated data. This cannot be undone.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="shrink-0 ml-4"
+                    onClick={() => { setDeleteOpen(true); setDeleteConfirm(''); setDeleteError(''); }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                    Delete Account
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
           className="flex justify-center pt-8 border-t"
         >
           <Button
@@ -527,6 +632,73 @@ const Settings = () => {
                   Updating...
                 </div>
               ) : 'Update Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md bg-zinc-950 border-destructive/30">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account Permanently
+            </DialogTitle>
+            <DialogDescription>
+              This will immediately delete your account, all consents, data records, audit logs, and notifications.
+              <strong className="text-foreground"> This cannot be undone.</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <p className="text-xs text-destructive font-medium">
+                To confirm, type your email address: <span className="font-bold">{profile?.email}</span>
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>Your email address</Label>
+              <Input
+                type="email"
+                value={deleteConfirm}
+                onChange={e => { setDeleteConfirm(e.target.value); setDeleteError(''); }}
+                placeholder={profile?.email}
+                className="bg-background border-destructive/30 focus:border-destructive"
+              />
+            </div>
+            {deleteError && (
+              <p className="text-sm text-destructive flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                {deleteError}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteOpen(false); setDeleteConfirm(''); setDeleteError(''); }}
+              disabled={deleteLoading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading || deleteConfirm !== profile?.email}
+              className="w-full sm:w-auto"
+            >
+              {deleteLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Deleting...
+                </div>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  Delete Permanently
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

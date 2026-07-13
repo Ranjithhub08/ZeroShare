@@ -24,6 +24,9 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+// Serve uploaded files (avatars)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Route Imports
 const authRoutes = require('./routes/auth.routes');
 const consentRoutes = require('./routes/consent.routes');

@@ -1,54 +1,51 @@
 const db = require('../database/db');
 
 class AnalyticsService {
-  async getDashboardStats() {
-    const queries = {
-      total_data: 'SELECT COUNT(*) FROM user_data',
-      active_consents: "SELECT COUNT(*) FROM consents WHERE status = 'GRANTED'",
-      revoked_consents: "SELECT COUNT(*) FROM consents WHERE status = 'REVOKED'",
-      total_access_events: "SELECT COUNT(*) FROM audit_logs WHERE event_type = 'Data Accessed'"
-    };
+  async getDashboardStats(userId, role) {
+    const isAdmin = role === 'admin';
+    const uf = isAdmin ? '' : `AND user_id = ${userId}`;
+    const uw = isAdmin ? '' : `WHERE user_id = ${userId}`;
 
-    const results = {};
-    for (const [key, query] of Object.entries(queries)) {
-      const res = await db.query(query);
-      results[key] = parseInt(res.rows[0].count);
+    const [totalData, activeConsents, revokedConsents, accessEvents] = await Promise.all([
+      db.query(`SELECT COUNT(*) FROM user_data ${uw}`),
+      db.query(`SELECT COUNT(*) FROM consents WHERE status='GRANTED' ${uf}`),
+      db.query(`SELECT COUNT(*) FROM consents WHERE status='REVOKED' ${uf}`),
+      db.query(`SELECT COUNT(*) FROM audit_logs WHERE event_type='Data Accessed' ${uf}`),
+    ]);
+
+    const activityRes = await db.query(
+      `SELECT TO_CHAR(created_at,'YYYY-MM-DD') as date, COUNT(*) as count
+       FROM consents WHERE created_at >= NOW() - INTERVAL '90 days' ${uf}
+       GROUP BY date ORDER BY date ASC`
+    );
+
+    const distRes = await db.query(
+      `SELECT data_type, COUNT(*) as count,
+       ROUND(COUNT(*)*100.0/NULLIF((SELECT COUNT(*) FROM user_data ${uw}),0),2) as percentage
+       FROM user_data ${uw} GROUP BY data_type`
+    );
+
+    // Admin-only: user breakdown
+    let userBreakdown = null;
+    if (isAdmin) {
+      const ubRes = await db.query(
+        `SELECT u.name, u.email, u.role,
+         (SELECT COUNT(*) FROM consents WHERE user_id=u.id) as consent_count,
+         (SELECT COUNT(*) FROM user_data WHERE user_id=u.id) as data_count
+         FROM users u ORDER BY u.created_at DESC`
+      );
+      userBreakdown = ubRes.rows;
     }
 
-    // Consent Activity Over Time (Requests per day for the last 30 days)
-    const activityQuery = `
-      SELECT 
-        TO_CHAR(created_at, 'YYYY-MM-DD') as date,
-        COUNT(*) as count
-      FROM consents
-      WHERE created_at >= NOW() - INTERVAL '30 days'
-      GROUP BY date
-      ORDER BY date ASC
-    `;
-    const activityRes = await db.query(activityQuery);
-    results.consent_activity_over_time = activityRes.rows.map(row => ({
-      date: row.date,
-      count: parseInt(row.count)
-    }));
-
-    // Data Type Distribution
-    const distributionQuery = `
-      SELECT 
-        data_type,
-        COUNT(*) as count,
-        ROUND(COUNT(*) * 100.0 / COALESCE(NULLIF((SELECT COUNT(*) FROM user_data), 0), 1), 2) as percentage
-      FROM user_data
-      GROUP BY data_type
-    `;
-    const distributionRes = await db.query(distributionQuery);
-    results.data_type_distribution = distributionRes.rows.map(row => ({
-      type: row.data_type.toLowerCase(),
-      count: parseInt(row.count),
-      percentage: parseFloat(row.percentage)
-    }));
-
-    return results;
+    return {
+      total_data: parseInt(totalData.rows[0].count),
+      active_consents: parseInt(activeConsents.rows[0].count),
+      revoked_consents: parseInt(revokedConsents.rows[0].count),
+      total_access_events: parseInt(accessEvents.rows[0].count),
+      consent_activity_over_time: activityRes.rows.map(r => ({ date: r.date, count: parseInt(r.count) })),
+      data_type_distribution: distRes.rows.map(r => ({ type: r.data_type, count: parseInt(r.count), percentage: parseFloat(r.percentage) })),
+      user_breakdown: userBreakdown,
+    };
   }
 }
-
 module.exports = new AnalyticsService();

@@ -1,15 +1,25 @@
 import { motion } from 'framer-motion';
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Shield, FileCheck, Activity, Settings } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Shield, FileCheck, Activity, Settings, Users, LogOut } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useAuth } from '@/context/AuthContext';
 
 const Sidebar = () => {
+  const { isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const links = [
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Data Vault', path: '/vault', icon: Shield },
     { name: 'Consent Hub', path: '/consents', icon: FileCheck },
     { name: 'Audit Trail', path: '/audit', icon: Activity },
+    ...(isAdmin ? [{ name: 'User Management', path: '/admin/users', icon: Users }] : []),
   ];
 
   const bottomLinks = [
@@ -84,6 +94,15 @@ const Sidebar = () => {
       <div className="mt-auto pt-6">
         <div className="mb-4 px-8 text-xs font-semibold tracking-wider text-zinc-500 uppercase">Configuration</div>
         {renderNavLinks(bottomLinks)}
+        <div className="px-4 mt-2">
+          <button
+            onClick={handleLogout}
+            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-red-400 transition-all duration-300"
+          >
+            <LogOut size={18} className="transition-all duration-300 group-hover:text-red-400" />
+            <span>Log out</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

@@ -1,20 +1,14 @@
 const db = require('../database/db');
 
 class ActivityService {
-  async getRecentActivity() {
-    const result = await db.query(`
-      SELECT 
-        id, 
-        event_type, 
-        event_type as description, -- Using event_type as fallback for description
-        app_name, 
-        timestamp 
-      FROM audit_logs 
-      ORDER BY timestamp DESC 
-      LIMIT 10
-    `);
-    return result.rows;
+  async getRecentActivity(userId, role) {
+    const where = role === 'admin' ? '' : 'WHERE user_id = $1';
+    const params = role === 'admin' ? [] : [userId];
+    const res = await db.query(
+      `SELECT id, event_type, app_name, timestamp FROM audit_logs ${where} ORDER BY timestamp DESC LIMIT 10`,
+      params
+    );
+    return res.rows;
   }
 }
-
 module.exports = new ActivityService();

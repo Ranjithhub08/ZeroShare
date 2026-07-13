@@ -1,15 +1,19 @@
-const notificationService = require('../services/notification.service');
+const notifService = require('../services/notification.service');
 
 exports.listNotifications = async (req, res) => {
   try {
-    const notifications = await notificationService.getAllNotifications();
-    res.status(200).json({
-      success: true,
-      data: notifications,
-      count: notifications.length
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
+    const data = await notifService.getAll();
+    res.json({ success: true, data, count: data.length });
+  } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to fetch notifications' });
+  }
+};
+
+exports.markRead = async (req, res) => {
+  try {
+    const data = await notifService.markRead(req.params.id);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to mark as read' });
   }
 };

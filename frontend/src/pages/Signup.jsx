@@ -1,16 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import { Shield, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/context/AuthContext';
 
 const Signup = () => {
   const navigate = useNavigate();
-  
-  const handleSignup = (e) => {
+  const { register } = useAuth();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async (e) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      await register(name, email, password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,53 +48,65 @@ const Signup = () => {
           <div className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="full-name">Full Name</Label>
-              <Input 
-                id="full-name" 
-                placeholder="John Doe" 
-                required 
+              <Input
+                id="full-name"
+                placeholder="John Doe"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="bg-muted/30 focus:bg-background transition-all"
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="email">Email address</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="name@example.com" 
-                required 
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="bg-muted/30 focus:bg-background transition-all"
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                placeholder="••••••••" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="bg-muted/30 focus:bg-background transition-all"
               />
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Minimum 8 characters</p>
             </div>
           </div>
 
+          {error && (
+            <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+              {error}
+            </p>
+          )}
+
           <div className="space-y-4">
             <div className="flex items-start space-x-2">
-              <input 
-                type="checkbox" 
-                id="terms" 
+              <input
+                type="checkbox"
+                id="terms"
                 required
-                className="mt-1 h-4 w-4 rounded border-input bg-muted/30 text-primary ring-offset-background focus:ring-2 focus:ring-ring" 
+                className="mt-1 h-4 w-4 rounded border-input bg-muted/30 text-primary ring-offset-background focus:ring-2 focus:ring-ring"
               />
               <Label htmlFor="terms" className="text-sm font-normal text-muted-foreground cursor-pointer leading-tight">
                 I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> and <a href="#" className="text-primary hover:underline">Privacy Policy</a>
               </Label>
             </div>
 
-            <Button type="submit" className="w-full h-11 text-base font-semibold">
-              Create Account
+            <Button type="submit" disabled={loading} className="w-full h-11 text-base font-semibold">
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...</> : 'Create Account'}
             </Button>
           </div>
         </form>

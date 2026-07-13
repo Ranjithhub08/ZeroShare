@@ -1,16 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import { Shield, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  
-  const handleLogin = (e) => {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,43 +47,53 @@ const Login = () => {
           <div className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email address</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="name@example.com" 
-                required 
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="bg-muted/30 focus:bg-background transition-all"
               />
             </div>
-            
+
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <a href="#" className="text-xs text-primary hover:underline">Forgot password?</a>
               </div>
-              <Input 
-                id="password" 
-                type="password" 
-                placeholder="••••••••" 
-                required 
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="bg-muted/30 focus:bg-background transition-all"
               />
             </div>
           </div>
 
+          {error && (
+            <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
+              {error}
+            </p>
+          )}
+
           <div className="flex items-center space-x-2">
-            <input 
-              type="checkbox" 
-              id="remember" 
-              className="h-4 w-4 rounded border-input bg-muted/30 text-primary ring-offset-background focus:ring-2 focus:ring-ring" 
+            <input
+              type="checkbox"
+              id="remember"
+              className="h-4 w-4 rounded border-input bg-muted/30 text-primary ring-offset-background focus:ring-2 focus:ring-ring"
             />
             <Label htmlFor="remember" className="text-sm font-normal text-muted-foreground cursor-pointer">
               Remember me for 30 days
             </Label>
           </div>
 
-          <Button type="submit" className="w-full h-11 text-base font-semibold">
-            Sign In
+          <Button type="submit" disabled={loading} className="w-full h-11 text-base font-semibold">
+            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</> : 'Sign In'}
           </Button>
         </form>
         

@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/user.controller');
-
-router.get('/profile', userController.getProfile);
-router.put('/profile', userController.updateProfile);
-router.put('/notifications', userController.updateNotifications);
-router.put('/password', userController.updatePassword);
-
+const ctrl = require('../controllers/user.controller');
+const protect = require('../middleware/auth.middleware');
+const adminOnly = require('../middleware/admin.middleware');
+router.use(protect);
+router.get('/profile', ctrl.getProfile);
+router.put('/profile', ctrl.updateProfile);
+router.put('/password', ctrl.updatePassword);
+router.get('/all', adminOnly, ctrl.getAllUsers);
+router.put('/:id/role', adminOnly, ctrl.updateUserRole);
 module.exports = router;

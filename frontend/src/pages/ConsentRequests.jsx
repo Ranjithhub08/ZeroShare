@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import api from '@/services/api';
 
 const ConsentRequests = () => {
   const [data, setData] = useState([]);
@@ -117,7 +118,7 @@ const ConsentRequests = () => {
       accessor: 'duration', 
       sortable: true, 
       render: (row) => {
-        const isApproved = row.status === 'APPROVED';
+        const isGranted = row.status === 'GRANTED';
         return (
           <div className="flex flex-col gap-1.5 min-w-[120px]">
             <div className="flex items-center justify-between text-[10px] font-bold tracking-tight">
@@ -125,15 +126,15 @@ const ConsentRequests = () => {
                   <Clock className="h-3.5 w-3.5" />
                   {row.duration}
                </span>
-               {isApproved && <span className="text-primary italic">3 days left</span>}
+               {isGranted && <span className="text-primary italic">Active</span>}
             </div>
-            {isApproved && (
+            {isGranted && (
                <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: '70%' }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full bg-primary shadow-[0_0_10px_rgba(168,85,247,0.5)]" 
+                    className="h-full bg-primary shadow-[0_0_10px_rgba(168,85,247,0.5)]"
                   />
                </div>
             )}
@@ -141,19 +142,23 @@ const ConsentRequests = () => {
         );
       }
     },
-    { 
-      header: 'Status', 
-      accessor: 'status', 
-      sortable: true, 
+    {
+      header: 'Status',
+      accessor: 'status',
+      sortable: true,
       render: (row) => {
         const isPending = row.status === 'PENDING';
-        const isApproved = row.status === 'APPROVED';
+        const isGranted = row.status === 'GRANTED';
+        const isRevoked = row.status === 'REVOKED';
         return (
-          <Badge 
-            variant={isPending ? "outline" : isApproved ? "default" : "destructive"} 
+          <Badge
+            variant="outline"
             className={cn(
               "px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase",
-              isPending && "border-amber-500/50 text-amber-500 bg-amber-500/5"
+              isPending && "border-amber-500/50 text-amber-500 bg-amber-500/5",
+              isGranted && "border-emerald-500/50 text-emerald-500 bg-emerald-500/5",
+              isRevoked && "border-rose-500/50 text-rose-500 bg-rose-500/5",
+              !isPending && !isGranted && !isRevoked && "border-zinc-500/50 text-zinc-400 bg-zinc-500/5"
             )}
           >
             {row.status}
@@ -203,13 +208,13 @@ const ConsentRequests = () => {
   const fetchConsents = useCallback(async () => {
     setLoading(true);
     try {
-      const url = `http://localhost:5001/api/consents/list?page=${page}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
-        setTotal(json.count);
-        setTotalPages(json.totalPages);
+      const res = await api.get('/consents', {
+        params: { page, limit, sortBy, sortDir }
+      });
+      if (res.data.success) {
+        setData(res.data.consents);
+        setTotal(res.data.total);
+        setTotalPages(res.data.totalPages);
       }
     } catch (err) {
       console.error('Failed to fetch consents', err);
@@ -224,12 +229,8 @@ const ConsentRequests = () => {
 
   const handleAction = async (id, actionType) => {
     try {
-      const endpoint = actionType === 'APPROVE' ? '/approve' : '/reject';
-      await fetch(`http://localhost:5001/api/consents${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
+      const endpoint = actionType === 'APPROVE' ? '/consents/approve' : '/consents/reject';
+      await api.post(endpoint, { id });
       fetchConsents();
     } catch (err) {
       console.error(`Failed to ${actionType} consent`, err);
@@ -237,27 +238,18 @@ const ConsentRequests = () => {
   };
 
   const handleCreateConsent = async () => {
-    // Generate a new row instead of hitting DB completely (for UI demo purposes)
-    const newRow = {
-      id: Date.now() + "_" + Math.floor(Math.random()*1000),
-      app_name: newConsentData.app_name,
-      data_type: newConsentData.data_type,
-      purpose: newConsentData.purpose,
-      duration: newConsentData.duration,
-      risk_level: 'low', 
-      status: 'PENDING',
-      created_at: new Date().toISOString()
-    };
-    
-    // Simulating database latency
+    if (!newConsentData.app_name || !newConsentData.data_type || !newConsentData.purpose) return;
     setLoading(true);
-    setTimeout(() => {
-      setData(prev => [newRow, ...prev]);
-      setTotal(prev => prev + 1);
+    try {
+      await api.post('/consents', newConsentData);
       setIsNewConsentModalOpen(false);
       setNewConsentData({ app_name: '', data_type: '', purpose: '', duration: '30 Days' });
+      fetchConsents();
+    } catch (err) {
+      console.error('Failed to create consent', err);
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   const downloadCSV = () => {

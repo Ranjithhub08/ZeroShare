@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import api from '@/services/api';
 
 const AuditLogs = () => {
   const [data, setData] = useState([]);
@@ -103,20 +104,20 @@ const AuditLogs = () => {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const url = `http://localhost:5001/api/audit/logs?page=${page}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
-        setTotal(json.count);
-        setTotalPages(json.totalPages);
+      const res = await api.get('/audit', {
+        params: { page, limit }
+      });
+      if (res.data.success) {
+        setData(res.data.logs);
+        setTotal(res.data.total);
+        setTotalPages(res.data.totalPages);
       }
     } catch (err) {
       console.error('Failed to fetch audit logs', err);
     } finally {
       setLoading(false);
     }
-  }, [page, limit, sortBy, sortDir]);
+  }, [page, limit]);
 
   useEffect(() => {
     fetchLogs();

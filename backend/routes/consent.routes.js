@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const consentController = require('../controllers/consent.controller');
-
-router.get('/list', consentController.listConsents);
-router.post('/approve', consentController.approveConsent);
-router.post('/reject', consentController.rejectConsent);
-
+const ctrl = require('../controllers/consent.controller');
+const protect = require('../middleware/auth.middleware');
+router.use(protect);
+router.get('/', ctrl.listConsents);
+router.post('/', ctrl.createConsent);
+router.post('/approve', ctrl.approveConsent);
+router.post('/reject', ctrl.rejectConsent);
+router.post('/revoke', ctrl.revokeConsent);
 module.exports = router;

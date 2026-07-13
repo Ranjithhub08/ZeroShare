@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const activityController = require('../controllers/activity.controller');
-
-router.get('/recent', activityController.getRecentActivity);
-
+const ctrl = require('../controllers/activity.controller');
+const protect = require('../middleware/auth.middleware');
+router.use(protect);
+router.get('/', ctrl.getRecentActivity);
 module.exports = router;

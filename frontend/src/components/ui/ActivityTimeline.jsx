@@ -1,15 +1,16 @@
 import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import ActivityItem from './ActivityItem';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence } from 'framer-motion';
+import api from '@/services/api';
 
 const ActivityTimeline = ({ limit = 5 }) => {
   const [activities, setActivities] = useState([]);
@@ -18,10 +19,9 @@ const ActivityTimeline = ({ limit = 5 }) => {
   useEffect(() => {
     const fetchActivity = async () => {
       try {
-        const response = await fetch('http://localhost:5001/api/activity/recent');
-        const result = await response.json();
-        if (result.success) {
-          setActivities(limit ? result.data.slice(0, limit) : result.data);
+        const res = await api.get('/activity');
+        if (res.data.success) {
+          setActivities(limit ? res.data.data.slice(0, limit) : res.data.data);
         }
       } catch (error) {
         console.error('Error fetching recent activity:', error);

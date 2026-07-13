@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // Route Imports
+const authRoutes = require('./routes/auth.routes');
 const consentRoutes = require('./routes/consent.routes');
 const auditRoutes = require('./routes/audit.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -20,6 +21,7 @@ const searchRoutes = require('./routes/search.routes');
 const userRoutes = require('./routes/user.routes');
 
 // Route Mounting
+app.use('/api/auth', authRoutes);
 app.use('/api/consents', consentRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/analytics', analyticsRoutes);

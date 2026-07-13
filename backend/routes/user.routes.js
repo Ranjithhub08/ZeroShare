@@ -8,5 +8,7 @@ router.get('/profile', ctrl.getProfile);
 router.put('/profile', ctrl.updateProfile);
 router.put('/password', ctrl.updatePassword);
 router.get('/all', adminOnly, ctrl.getAllUsers);
+router.get('/:id/records', adminOnly, ctrl.getUserRecords);
 router.put('/:id/role', adminOnly, ctrl.updateUserRole);
+router.delete('/:id', adminOnly, ctrl.deleteUser);
 module.exports = router;

@@ -36,7 +36,20 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'ZeroShare API is running' });
 });
 
+// Consent Auto-Expiry job — runs every 5 minutes
+const consentService = require('./services/consent.service');
+setInterval(async () => {
+  try {
+    const expired = await consentService.expireConsents();
+    if (expired > 0) console.log(`[Auto-Expiry] Revoked ${expired} expired consent(s).`);
+  } catch (err) {
+    console.error('[Auto-Expiry] Error:', err.message);
+  }
+}, 5 * 60 * 1000);
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`ZeroShare API running on port ${PORT}`);
+  // Run expiry check immediately on start
+  consentService.expireConsents().catch(() => {});
 });

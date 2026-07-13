@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
-import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { cn } from "@/lib/utils";
-import { AnimatePresence } from 'framer-motion';
+import api from '@/services/api';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,24 +12,23 @@ const NotificationBell = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await fetch('http://localhost:5001/api/notifications/list');
-        const result = await response.json();
-        if (result.success) {
-          setNotifications(result.data);
-          setUnreadCount(result.data.filter(n => n.status === 'unread').length);
-        }
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await api.get('/notifications');
+      if (res.data.success) {
+        setNotifications(res.data.data);
+        setUnreadCount(res.data.unread ?? 0);
       }
-    };
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Polling every 30s
-    return () => clearInterval(interval);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -41,11 +40,33 @@ const NotificationBell = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, status: 'read' })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Mark all read failed:', err);
+    }
+  };
+
+  const handleMarkOneRead = async (id) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, status: 'read' } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Mark read failed:', err);
+    }
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
-      <Button 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        variant="ghost"
+        size="icon"
         className={cn(
           "h-9 w-9 relative rounded-full ring-offset-background transition-all",
           isOpen && "bg-muted"
@@ -70,9 +91,11 @@ const NotificationBell = () => {
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="absolute right-0 mt-2 z-50 overflow-hidden"
           >
-            <NotificationDropdown 
-              notifications={notifications} 
-              onClose={() => setIsOpen(false)} 
+            <NotificationDropdown
+              notifications={notifications}
+              onClose={() => setIsOpen(false)}
+              onMarkAllRead={handleMarkAllRead}
+              onMarkRead={handleMarkOneRead}
             />
           </motion.div>
         )}

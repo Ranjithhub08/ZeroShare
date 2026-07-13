@@ -1,9 +1,9 @@
 import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import AvatarUploader from './AvatarUploader';
 
 const ProfileCard = ({ profile, onUpdate, loading }) => {
   const [formData, setFormData] = React.useState({
-    full_name: profile?.full_name ?? '',
+    name: profile?.name ?? '',
     email: profile?.email ?? '',
     avatar_url: profile?.avatar_url ?? ''
   });
@@ -22,7 +22,7 @@ const ProfileCard = ({ profile, onUpdate, loading }) => {
   React.useEffect(() => {
     if (profile) {
       setFormData({
-        full_name: profile.full_name ?? '',
+        name: profile.name ?? '',
         email: profile.email ?? '',
         avatar_url: profile.avatar_url ?? ''
       });
@@ -49,33 +49,33 @@ const ProfileCard = ({ profile, onUpdate, loading }) => {
         <CardTitle>Profile Settings</CardTitle>
         <CardDescription>Update your personal information and public profile details.</CardDescription>
       </CardHeader>
-      
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-8">
           <div className="flex flex-col md:flex-row gap-8 items-start">
             <div className="flex-shrink-0 mx-auto md:mx-0">
-              <AvatarUploader 
-                currentAvatar={formData.avatar_url} 
-                onUpload={handleAvatarUpdate} 
+              <AvatarUploader
+                currentAvatar={formData.avatar_url}
+                onUpload={handleAvatarUpdate}
               />
             </div>
-            
+
             <div className="flex-1 space-y-4 w-full">
               <div className="grid gap-2">
-                <Label htmlFor="full_name">Full Name</Label>
-                <Input 
-                  id="full_name"
-                  name="full_name"
-                  value={formData.full_name}
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
                   onChange={handleChange}
                   placeholder="Enter your full name"
                   className="bg-background"
                 />
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input 
+                <Input
                   id="email"
                   name="email"
                   type="email"
@@ -88,7 +88,7 @@ const ProfileCard = ({ profile, onUpdate, loading }) => {
             </div>
           </div>
         </CardContent>
-        
+
         <CardFooter className="border-t bg-muted/30 px-6 py-4 flex justify-end">
           <Button type="submit" disabled={loading} className="px-8">
             {loading ? (

@@ -2,7 +2,7 @@ import React from 'react';
 import { FileQuestion, FileCheck, Shield, ShieldAlert, Clock } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
-const NotificationItem = ({ notification }) => {
+const NotificationItem = ({ notification, onMarkRead }) => {
   const isUnread = notification.status === 'unread';
 
   const getIcon = () => {
@@ -26,10 +26,13 @@ const NotificationItem = ({ notification }) => {
   };
 
   return (
-    <div className={cn(
-      "flex gap-3 p-3 transition-colors hover:bg-muted/50 group cursor-pointer relative",
-      isUnread && "bg-primary/5 hover:bg-primary/10"
-    )}>
+    <div
+      className={cn(
+        "flex gap-3 p-3 transition-colors hover:bg-muted/50 group cursor-pointer relative",
+        isUnread && "bg-primary/5 hover:bg-primary/10"
+      )}
+      onClick={() => isUnread && onMarkRead && onMarkRead(notification.id)}
+    >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-background group-hover:scale-110 transition-transform">
         {getIcon()}
       </div>

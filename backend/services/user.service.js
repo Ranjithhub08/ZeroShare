@@ -8,7 +8,7 @@ exports.getProfile = async (userId) => {
 
 exports.getAllUsers = async () => {
   const res = await db.query(
-    `SELECT u.id, u.name, u.email, u.role, u.created_at,
+    `SELECT u.id, u.name, u.email, u.role, u.created_at, u.updated_at,
      (SELECT COUNT(*) FROM consents WHERE user_id=u.id) as consent_count,
      (SELECT COUNT(*) FROM user_data WHERE user_id=u.id) as data_count
      FROM users u ORDER BY u.created_at DESC`
@@ -34,5 +34,21 @@ exports.updateUserRole = async (targetId, role) => {
   const valid = ['admin','user'];
   if (!valid.includes(role)) throw new Error('Invalid role');
   const res = await db.query('UPDATE users SET role=$1 WHERE id=$2 RETURNING id,name,email,role', [role, targetId]);
+  return res.rows[0];
+};
+
+exports.getUserRecords = async (targetId) => {
+  const res = await db.query(
+    `SELECT id, data_type, created_at FROM user_data
+     WHERE user_id = $1 ORDER BY created_at DESC`,
+    [targetId]
+  );
+  return res.rows;
+};
+
+exports.deleteUser = async (targetId, requesterId) => {
+  if (parseInt(targetId) === parseInt(requesterId)) throw new Error('You cannot delete your own account');
+  const res = await db.query('DELETE FROM users WHERE id=$1 RETURNING id,name,email', [targetId]);
+  if (res.rows.length === 0) throw new Error('User not found');
   return res.rows[0];
 };

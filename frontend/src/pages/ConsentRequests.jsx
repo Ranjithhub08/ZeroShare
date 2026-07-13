@@ -11,12 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  AppWindow, 
-  ShieldCheck, 
-  AlertCircle, 
-  Clock, 
-  CheckCircle2, 
+import {
+  AppWindow,
+  ShieldCheck,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
   XCircle,
   Search,
   ChevronRight,
@@ -27,7 +27,8 @@ import {
   Activity,
   Zap,
   Lock,
-  History
+  History,
+  ShieldOff
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -166,40 +167,54 @@ const ConsentRequests = () => {
         );
       }
     },
-    { 
-      header: '', 
-      accessor: 'actions', 
+    {
+      header: '',
+      accessor: 'actions',
       render: (row) => (
         <div className="flex justify-end gap-1">
-          {row.status === 'PENDING' ? (
+          {row.status === 'PENDING' && (
             <>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
                 onClick={(e) => { e.stopPropagation(); handleAction(row.id, 'APPROVE'); }}
+                title="Approve"
               >
                 <CheckCircle2 className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
                 onClick={(e) => { e.stopPropagation(); handleAction(row.id, 'REJECT'); }}
+                title="Reject"
               >
                 <XCircle className="h-4 w-4" />
               </Button>
             </>
-          ) : (
-             <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={(e) => { e.stopPropagation(); setSelectedRequest(row); setIsModalOpen(true); }}
+          )}
+          {row.status === 'GRANTED' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-3 text-xs text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 gap-1.5"
+              onClick={(e) => { e.stopPropagation(); handleAction(row.id, 'REVOKE'); }}
+              title="Revoke access"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ShieldOff className="h-3.5 w-3.5" />
+              Revoke
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => { e.stopPropagation(); setSelectedRequest(row); setIsModalOpen(true); }}
+            title="View details"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       )
     }
@@ -229,8 +244,12 @@ const ConsentRequests = () => {
 
   const handleAction = async (id, actionType) => {
     try {
-      const endpoint = actionType === 'APPROVE' ? '/consents/approve' : '/consents/reject';
-      await api.post(endpoint, { id });
+      const endpointMap = {
+        APPROVE: '/consents/approve',
+        REJECT: '/consents/reject',
+        REVOKE: '/consents/revoke',
+      };
+      await api.post(endpointMap[actionType], { id });
       fetchConsents();
     } catch (err) {
       console.error(`Failed to ${actionType} consent`, err);

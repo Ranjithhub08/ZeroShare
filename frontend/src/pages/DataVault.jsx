@@ -34,13 +34,19 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import api from '@/services/api';
+import { useAuth } from '@/context/AuthContext';
 
 const DataVault = () => {
+  const { isAdmin } = useAuth();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+  // View Data Modal State
+  const [viewRecord, setViewRecord] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   // Add Data Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -189,6 +195,14 @@ const DataVault = () => {
         </div>
       )
     },
+    ...(isAdmin ? [{
+      header: 'Owner',
+      accessor: 'user_name',
+      sortable: false,
+      render: (row) => (
+        <span className="text-sm text-zinc-300 font-medium">{row.user_name || '—'}</span>
+      )
+    }] : []),
     {
       header: 'Type',
       accessor: 'data_type',
@@ -205,9 +219,11 @@ const DataVault = () => {
       accessor: 'value',
       sortable: false,
       render: (row) => (
-        <span className="text-xs text-muted-foreground font-mono">
-          {row.value ? `${row.value.substring(0, 20)}${row.value.length > 20 ? '…' : ''}` : '—'}
-        </span>
+        isAdmin
+          ? <span className="text-xs font-mono text-amber-500/70 tracking-widest select-none">••••••••••••</span>
+          : <span className="text-xs text-muted-foreground font-mono">
+              {row.value ? `${row.value.substring(0, 20)}${row.value.length > 20 ? '…' : ''}` : '—'}
+            </span>
       )
     },
     {
@@ -251,6 +267,16 @@ const DataVault = () => {
       accessor: 'actions',
       render: (row) => (
         <div className="flex justify-end gap-1">
+          {!isAdmin && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-blue-400 hover:bg-blue-500/10"
+              onClick={() => { setViewRecord(row); setIsViewModalOpen(true); }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -287,19 +313,23 @@ const DataVault = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-primary">Data Vault</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Your cryptographically secured personal data escrow. {total > 0 && `${total} record${total !== 1 ? 's' : ''} stored.`}
+              {isAdmin
+                ? `Platform-wide data registry. ${total > 0 ? `${total} total records.` : ''} Values are encrypted and hidden from admin view.`
+                : `Your cryptographically secured personal data escrow. ${total > 0 ? `${total} record${total !== 1 ? 's' : ''} stored.` : ''}`}
             </p>
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="gap-2 bg-card" onClick={downloadCSV} disabled={filteredData.length === 0}>
               <Download className="h-4 w-4" /> Export CSV
             </Button>
-            <Button
-              className="gap-2 shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]"
-              onClick={() => { setIsAddModalOpen(true); setAddError(''); setNewDataType(''); setNewDataValue(''); }}
-            >
-              <Plus className="h-4 w-4" /> Add Data
-            </Button>
+            {!isAdmin && (
+              <Button
+                className="gap-2 shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_30px_rgba(168,85,247,0.5)]"
+                onClick={() => { setIsAddModalOpen(true); setAddError(''); setNewDataType(''); setNewDataValue(''); }}
+              >
+                <Plus className="h-4 w-4" /> Add Data
+              </Button>
+            )}
           </div>
         </header>
 
@@ -333,6 +363,77 @@ const DataVault = () => {
           />
         </Card>
       </motion.div>
+
+      {/* View Data Modal */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+        <DialogContent className="max-w-md bg-card border-primary/20 shadow-[0_0_50px_rgba(168,85,247,0.15)]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <Eye className="h-5 w-5 text-blue-400" />
+              View Secured Data
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground/80">
+              Your data is stored securely. Only you can view this.
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewRecord && (
+            <div className="flex flex-col gap-4 py-2">
+              {/* Meta row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/30 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Record ID</span>
+                  <span className="font-mono text-sm font-bold text-primary">#{String(viewRecord.id).padStart(6, '0')}</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/30 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Data Type</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-sm font-semibold">{viewRecord.data_type}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/30 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Sensitivity</span>
+                  <Badge variant="outline" className={cn("w-fit mt-0.5 font-bold text-[10px] uppercase tracking-wider px-2 py-0", getSensitivity(viewRecord.data_type).color)}>
+                    {getSensitivity(viewRecord.data_type).level}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/30 border border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Added On</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium">
+                      {new Date(viewRecord.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Value */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Stored Value</span>
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 min-h-[80px]">
+                  <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                    {viewRecord.value}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                <p className="text-xs text-emerald-400 font-medium">This data is privately stored. No third party can access it without your explicit consent.</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Data Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>

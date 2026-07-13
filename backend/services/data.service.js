@@ -13,8 +13,12 @@ class DataService {
     );
     const total = parseInt(countRes.rows[0].count);
 
+    // Admin sees metadata only — value is masked server-side for privacy
+    const selectValue = isAdmin ? `'[ENCRYPTED]' as value` : `ud.value`;
     const rows = await db.query(
-      `SELECT ud.*, u.name as user_name FROM user_data ud
+      `SELECT ud.id, ud.user_id, ud.data_type, ud.created_at, ud.updated_at,
+       u.name as user_name, ${selectValue}
+       FROM user_data ud
        LEFT JOIN users u ON ud.user_id = u.id
        ${where} ORDER BY ud.created_at DESC LIMIT $1 OFFSET $2`,
       params

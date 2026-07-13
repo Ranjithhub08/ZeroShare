@@ -48,3 +48,21 @@ exports.updateUserRole = async (req, res) => {
     res.status(400).json({ success: false, error: err.message });
   }
 };
+
+exports.getUserRecords = async (req, res) => {
+  try {
+    const records = await userService.getUserRecords(req.params.id);
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to fetch user records' });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const deleted = await userService.deleteUser(req.params.id, req.userId);
+    res.json({ success: true, data: deleted, message: `User ${deleted.name} deleted` });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+};

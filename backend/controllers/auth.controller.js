@@ -19,7 +19,7 @@ exports.register = async (req, res) => {
       return res.status(409).json({ success: false, error: 'Email already registered' });
     const hash = await bcrypt.hash(password, 10);
     const result = await db.query(
-      `INSERT INTO users (name, email, password_hash, role) VALUES ($1,$2,$3,'user') RETURNING id, name, email, role`,
+      `INSERT INTO users (name, email, password_hash, role, two_fa_enabled) VALUES ($1,$2,$3,'user',TRUE) RETURNING id, name, email, role`,
       [name, email, hash]
     );
     const user = result.rows[0];

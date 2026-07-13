@@ -4,15 +4,25 @@ const http = require('http');
 const { WebSocketServer } = require('ws');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const helmet = require('helmet');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const wsManager = require('./services/ws.manager');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Security headers
+app.use(helmet());
+
+// CORS
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+// Body parsing — limit payload size to prevent abuse
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Route Imports
 const authRoutes = require('./routes/auth.routes');

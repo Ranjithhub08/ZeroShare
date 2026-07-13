@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
@@ -23,7 +24,7 @@ const seedDatabase = async () => {
     const adminHash = await bcrypt.hash('admin123', 10);
     const adminRes = await client.query(`
       INSERT INTO users (name, email, password_hash, role)
-      VALUES ('Admin', 'admin@zeroshare.io', $1, 'admin')
+      VALUES ('Ranjith', 'ranjithkumarhub@gmail.com', $1, 'admin')
       RETURNING id
     `, [adminHash]);
     const adminId = adminRes.rows[0].id;
@@ -37,7 +38,7 @@ const seedDatabase = async () => {
     `, [userHash]);
     const userId = userRes.rows[0].id;
 
-    console.log(`✅ Admin created: admin@zeroshare.io / admin123`);
+    console.log(`✅ Admin created: ranjithkumarhub@gmail.com / admin123`);
     console.log(`✅ User created:  user@zeroshare.io  / user123`);
 
     // Seed consents for the user
@@ -95,8 +96,8 @@ const seedDatabase = async () => {
     await client.query('COMMIT');
     console.log('\n✅ Database seeded successfully!');
     console.log('─────────────────────────────────');
-    console.log('  Admin → admin@zeroshare.io / admin123');
-    console.log('  User  → user@zeroshare.io  / user123');
+    console.log('  Admin → ranjithkumarhub@gmail.com / admin123');
+    console.log('  User  → user@zeroshare.io        / user123');
     console.log('─────────────────────────────────');
   } catch (err) {
     await client.query('ROLLBACK');

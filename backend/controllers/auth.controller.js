@@ -54,24 +54,33 @@ exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ success: false, error: 'Email is required' });
   try {
+    console.log('[ForgotPassword] Request for:', email);
     const result = await db.query('SELECT id, name, email FROM users WHERE email=$1', [email]);
-    // Always return success to prevent email enumeration
-    if (result.rows.length === 0)
+    if (result.rows.length === 0) {
+      console.log('[ForgotPassword] Email not found in DB');
       return res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
+    }
     const user = result.rows[0];
+    console.log('[ForgotPassword] User found:', user.name);
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
     await db.query(
       'UPDATE users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3',
       [token, expires, user.id]
     );
+    console.log('[ForgotPassword] Token saved to DB');
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
-    sendEmail({ to: user.email, ...templates.resetPassword(user.name, resetUrl) })
-      .catch(err => console.error('[Email] Reset email failed:', err.message));
+    console.log('[ForgotPassword] Reset URL:', resetUrl);
+    try {
+      await sendEmail({ to: user.email, ...templates.resetPassword(user.name, resetUrl) });
+      console.log('[ForgotPassword] Email sent successfully to:', user.email);
+    } catch (emailErr) {
+      console.error('[ForgotPassword] Email send failed:', emailErr.message);
+    }
     res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
   } catch (err) {
-    console.error('Forgot password error:', err);
-    res.status(500).json({ success: false, error: 'Failed to process request' });
+    console.error('[ForgotPassword] Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 

@@ -38,16 +38,19 @@ async function getTransporter() {
 
 async function sendEmail({ to, subject, html }) {
   const t = await getTransporter();
+  // TEST_EMAIL overrides recipient — all emails go to your inbox during dev/testing
+  const recipient = process.env.TEST_EMAIL || to;
   const info = await t.sendMail({
     from: process.env.SMTP_FROM || '"ZeroShare" <noreply@zeroshare.io>',
-    to,
+    to: recipient,
     subject,
     html,
   });
 
   if (testAccount) {
-    // In dev, log the preview URL
-    console.log(`[Email] Preview: ${nodemailer.getTestMessageUrl(info)}`);
+    console.log(`[Email] Ethereal preview: ${nodemailer.getTestMessageUrl(info)}`);
+  } else {
+    console.log(`[Email] Sent to ${recipient} — subject: "${subject}"`);
   }
   return info;
 }
@@ -100,16 +103,24 @@ const templates = {
       </div>`
   }),
   resetPassword: (name, resetUrl) => ({
-    subject: '🔑 Reset your ZeroShare password',
+    subject: 'Reset your ZeroShare password',
     html: `
-      <div style="font-family:sans-serif;max-width:500px;margin:auto;background:#0f0f12;color:#e4e4e7;padding:32px;border-radius:12px;">
-        <h2 style="color:#a855f7">ZeroShare</h2>
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;">
+        <h2 style="color:#7c3aed;margin-top:0;">ZeroShare</h2>
         <p>Hi <strong>${name}</strong>,</p>
-        <p>We received a request to reset your password. Click the button below — this link expires in <strong>1 hour</strong>.</p>
-        <a href="${resetUrl}" style="display:inline-block;margin:16px 0;padding:12px 28px;background:#a855f7;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">Reset Password</a>
-        <p style="font-size:13px;color:#71717a">If you didn't request this, you can safely ignore this email.</p>
-        <hr style="border-color:#27272a;margin:24px 0"/>
-        <p style="font-size:12px;color:#52525b">ZeroShare — Your data, your rules.</p>
+        <p>We received a request to reset your password. This link expires in <strong>1 hour</strong>.</p>
+        <p style="margin:24px 0;">
+          <a href="${resetUrl}" style="display:inline-block;padding:12px 28px;background:#7c3aed;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">
+            Reset Password
+          </a>
+        </p>
+        <p style="font-size:13px;color:#6b7280;">If the button above does not work, copy and paste this link into your browser:</p>
+        <p style="word-break:break-all;font-size:13px;">
+          <a href="${resetUrl}" style="color:#7c3aed;">${resetUrl}</a>
+        </p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+        <p style="font-size:12px;color:#9ca3af;">If you did not request a password reset, you can safely ignore this email.</p>
+        <p style="font-size:12px;color:#9ca3af;">ZeroShare — Your data, your rules.</p>
       </div>`
   }),
 };

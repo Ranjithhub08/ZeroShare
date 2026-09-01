@@ -462,12 +462,44 @@ async def analyze_website(req: WebsiteAnalysisRequest):
             score += 5
             factors.append("⚠️ No contact information found")
 
-        # ── Signal 9: Cookie Consent / GDPR ──────────────────────────────────
-        if re.search(r'cookie\s*consent|accept\s*cookie|gdpr|we use cookies|cookie\s*policy', html):
-            factors.append("✅ Cookie consent / GDPR mechanism detected")
+        # ── Signal 9: Cookie Detection ────────────────────────────────────────
+        # Check Set-Cookie headers (actual cookies being set)
+        set_cookie = resp_headers.get('set-cookie', '')
+        cookie_names = re.findall(r'(?:^|,\s*)([a-zA-Z_][a-zA-Z0-9_\-]*)=', set_cookie)
+        tracking_cookies = []
+        TRACKING_COOKIE_PATTERNS = {
+            '_ga': 'Google Analytics tracking cookie (tracks every page you visit)',
+            '_gid': 'Google Analytics session cookie',
+            '_fbp': 'Facebook Pixel cookie (tracks you across Facebook partner sites)',
+            '_fbc': 'Facebook click tracking cookie',
+            'fr': 'Facebook advertising cookie',
+            'IDE': 'Google DoubleClick ad targeting cookie',
+            'NID': 'Google personalisation cookie',
+            '__utma': 'Google Analytics long-term tracking cookie',
+            '_hjid': 'Hotjar user identification cookie (records your session)',
+            'intercom': 'Intercom customer tracking cookie',
+            'amplitude': 'Amplitude behaviour analytics cookie',
+            'mp_': 'Mixpanel analytics cookie',
+        }
+        for cname in cookie_names:
+            for pattern, desc in TRACKING_COOKIE_PATTERNS.items():
+                if cname.startswith(pattern):
+                    tracking_cookies.append(f"{cname} — {desc}")
+
+        if tracking_cookies:
+            score += 5 * len(tracking_cookies)
+            factors.append(f"🍪 Tracking cookies set on your browser: {len(tracking_cookies)} found")
+            for tc in tracking_cookies[:4]:  # show up to 4
+                factors.append(f"   └ {tc}")
         else:
-            score += 5
-            factors.append("⚠️ No cookie consent detected")
+            factors.append("✅ No known tracking cookies detected in response headers")
+
+        # Check for cookie consent UI in HTML
+        if re.search(r'cookie\s*consent|accept\s*(all\s*)?cookie|gdpr|we use cookies|cookie\s*policy|cookiebanner|cookie-banner', html):
+            factors.append("✅ Cookie consent banner found — site asks permission before tracking")
+        else:
+            score += 8
+            factors.append("⚠️ No cookie consent banner — site may track you without asking permission (GDPR violation)")
 
         # ── Signal 10: Suspicious Scripts ────────────────────────────────────
         if any(p in html for p in SUSPICIOUS_SCRIPTS):

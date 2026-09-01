@@ -178,6 +178,40 @@ class ConsentService {
     return res.rows;
   }
 
+  // Feature 6 — Permission Creep: app asking for more data types over time
+  async detectPermissionCreep(appName) {
+    if (!appName) return null;
+    const res = await db.query(
+      `SELECT data_type, created_at, risk_level
+       FROM consents WHERE app_name ILIKE $1
+       ORDER BY created_at ASC`,
+      [appName]
+    );
+    const rows = res.rows;
+    if (rows.length < 3) return null; // need at least 3 consents to detect creep
+
+    const uniqueTypes = [...new Set(rows.map(r => r.data_type.toLowerCase()))];
+    const highRiskKeywords = ['passport', 'medical', 'biometric', 'ssn', 'bank', 'credit card', 'aadhaar', 'genetic'];
+    const recentHighRisk = rows.slice(-3).filter(r => highRiskKeywords.some(k => r.data_type.toLowerCase().includes(k)));
+    const hasCreep = uniqueTypes.length >= 3;
+    const hasHighRiskCreep = recentHighRisk.length > 0 && uniqueTypes.length >= 3;
+
+    if (hasHighRiskCreep) {
+      return {
+        creep: true, severity: 'high',
+        message: `🚨 PERMISSION CREEP: "${appName}" has now requested ${uniqueTypes.length} different data types including sensitive data (${recentHighRisk.map(r=>r.data_type).join(', ')}). This pattern is concerning.`,
+        dataTypes: uniqueTypes, totalRequests: rows.length,
+      };
+    } else if (hasCreep) {
+      return {
+        creep: true, severity: 'medium',
+        message: `⚠️ PERMISSION CREEP: "${appName}" has requested ${uniqueTypes.length} different data types over time: [${uniqueTypes.join(', ')}]. Review if all are necessary.`,
+        dataTypes: uniqueTypes, totalRequests: rows.length,
+      };
+    }
+    return { creep: false, dataTypes: uniqueTypes, totalRequests: rows.length };
+  }
+
   // Feature 4 — Anomaly Detection: has this app changed what data it requests?
   async detectAnomaly(appName, dataType) {
     if (!appName) return null;

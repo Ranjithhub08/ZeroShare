@@ -108,15 +108,22 @@ const ConsentRequests = () => {
   const [mlPreviewLoading, setMlPreviewLoading] = useState(false);
 
   // Debounced ML score call
+  const [durationSuggestion, setDurationSuggestion] = useState(null);
+
   const mlDebounceRef = React.useRef(null);
   const fetchMlPreview = React.useCallback((formData) => {
     clearTimeout(mlDebounceRef.current);
-    if (!formData.data_type || !formData.purpose) { setMlPreview(null); return; }
+    if (!formData.data_type || !formData.purpose) { setMlPreview(null); setDurationSuggestion(null); return; }
     mlDebounceRef.current = setTimeout(async () => {
       setMlPreviewLoading(true);
       try {
-        const res = await api.post('/ml/score', formData);
-        setMlPreview(res.data);
+        const [scoreRes, durationRes] = await Promise.all([
+          api.post('/ml/score', formData),
+          api.post('/ml/suggest-duration', formData).catch(() => ({ data: null })),
+        ]);
+        setMlPreview(scoreRes.data);
+        if (durationRes.data?.suggested_duration) setDurationSuggestion(durationRes.data);
+        else setDurationSuggestion(null);
       } catch { /* ML offline — ignore */ }
       finally { setMlPreviewLoading(false); }
     }, 600);
@@ -428,10 +435,20 @@ const ConsentRequests = () => {
       setNewConsentData({ requester_type: 'app', app_name: '', requester_url: '', data_type: '', purpose: '', duration: '30 Days' });
       setMlPreview(null);
       fetchConsents();
-      // Feature 4: show anomaly warning if detected
+      // Feature 4: anomaly warning
       if (res.data?.anomaly?.anomaly) {
         setAnomalyWarning(res.data.anomaly);
         setTimeout(() => setAnomalyWarning(null), 12000);
+      }
+      // Feature 6: permission creep check
+      const appName = newConsentData.requester_type === 'website' ? newConsentData.requester_url : newConsentData.app_name;
+      if (appName) {
+        api.get(`/ml/permission-creep?app_name=${encodeURIComponent(appName)}`).then(cr => {
+          if (cr.data?.data?.creep) {
+            setAnomalyWarning(prev => prev || cr.data.data);
+            setTimeout(() => setAnomalyWarning(null), 15000);
+          }
+        }).catch(() => {/* ignore */});
       }
     } catch (err) {
       console.error('Failed to create consent', err);
@@ -818,6 +835,17 @@ const ConsentRequests = () => {
                 onChange={e => setNewConsentData(p => ({ ...p, duration: e.target.value }))}
                 placeholder="e.g., 30 Days"
               />
+              {/* Feature 5 — Duration Suggestion */}
+              {durationSuggestion && durationSuggestion.suggested_duration !== newConsentData.duration && (
+                <button
+                  type="button"
+                  onClick={() => setNewConsentData(p => ({ ...p, duration: durationSuggestion.suggested_duration }))}
+                  className="flex items-center gap-2 mt-1 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-1.5 w-full text-left"
+                >
+                  <Zap className="h-3 w-3 shrink-0" />
+                  <span>💡 ML suggests: <strong>{durationSuggestion.suggested_duration}</strong> — {durationSuggestion.reason} <span className="underline ml-1">Apply</span></span>
+                </button>
+              )}
             </div>
 
             {/* Live ML Risk Preview */}
@@ -1020,6 +1048,38 @@ const ConsentRequests = () => {
               <a href={websiteAnalysis.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" /> Visit {websiteAnalysis.domain}
               </a>
+
+              {/* Feature 7 — Trust Score History */}
+              {websiteAnalysis.history?.length > 1 && (
+                <div className="mt-3 border border-border rounded-lg p-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Trust Score History</p>
+                  <div className="flex items-end gap-1.5 h-10">
+                    {websiteAnalysis.history.slice().reverse().map((h, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                        <div
+                          className={cn("w-full rounded-sm",
+                            h.risk_level === 'high' ? "bg-rose-500" : h.risk_level === 'medium' ? "bg-amber-500" : "bg-emerald-500"
+                          )}
+                          style={{ height: `${Math.max(4, h.score)}%`, maxHeight: '36px', minHeight: '4px' }}
+                          title={`Score: ${h.score} — ${new Date(h.analyzed_at).toLocaleDateString()}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {websiteAnalysis.history.length} past scan{websiteAnalysis.history.length > 1 ? 's' : ''} —
+                    latest: <span className={cn(
+                      websiteAnalysis.history[0]?.risk_level === 'high' ? "text-rose-400" :
+                      websiteAnalysis.history[0]?.risk_level === 'medium' ? "text-amber-400" : "text-emerald-400"
+                    )}>{websiteAnalysis.history[0]?.score}/100 {websiteAnalysis.history[0]?.risk_level}</span>
+                    {websiteAnalysis.history.length > 1 && websiteAnalysis.history[0]?.score !== websiteAnalysis.history[1]?.score && (
+                      <span className="ml-2 text-amber-400">
+                        {websiteAnalysis.history[0]?.score > websiteAnalysis.history[1]?.score ? '⬆️ Risk increased' : '⬇️ Risk decreased'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

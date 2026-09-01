@@ -59,6 +59,16 @@ const runMigrations = async () => {
     await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS requester_url VARCHAR(500)`);
     // ML risk score column
     await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS risk_score INTEGER`);
+    // Feature 7 — Website Trust Score History
+    await db.query(`CREATE TABLE IF NOT EXISTS website_risk_history (
+      id          SERIAL PRIMARY KEY,
+      url         VARCHAR(500) NOT NULL,
+      domain      VARCHAR(200),
+      score       INTEGER,
+      risk_level  VARCHAR(10),
+      factors     JSONB,
+      analyzed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`);
     console.log('✅ Database migrations applied.');
   } catch (err) {
     console.error('❌ Migration error:', err.message);

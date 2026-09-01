@@ -3,6 +3,7 @@ const router = express.Router();
 const http = require('http');
 const protect = require('../middleware/auth.middleware');
 const consentService = require('../services/consent.service');
+const db = require('../database/db');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
 
@@ -36,15 +37,28 @@ router.post('/score', protect, async (req, res) => {
   }
 });
 
-// POST /api/ml/analyze-website — real website risk analysis
+// POST /api/ml/analyze-website — real website risk analysis (Feature 7: saves history)
 router.post('/analyze-website', protect, async (req, res) => {
   try {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
     const result = await proxyToML('/analyze-website', { url });
+    // Save to history (Feature 7)
+    if (result.score !== undefined) {
+      await db.query(
+        `INSERT INTO website_risk_history (url, domain, score, risk_level, factors) VALUES ($1,$2,$3,$4,$5)`,
+        [result.url || url, result.domain || '', result.score, result.risk_level, JSON.stringify(result.factors || [])]
+      ).catch(() => { /* non-fatal */ });
+    }
+    // Attach history to result
+    const history = await db.query(
+      `SELECT score, risk_level, analyzed_at FROM website_risk_history WHERE domain = $1 ORDER BY analyzed_at DESC LIMIT 10`,
+      [result.domain || '']
+    ).catch(() => ({ rows: [] }));
+    result.history = history.rows;
     res.json(result);
   } catch (err) {
-    res.json({ score: 0, risk_level: 'unknown', factors: ['Website analysis unavailable — ML service offline'], fetch_success: false });
+    res.json({ score: 0, risk_level: 'unknown', factors: ['Website analysis unavailable — ML service offline'], fetch_success: false, history: [] });
   }
 });
 
@@ -67,6 +81,28 @@ router.post('/check-phishing', protect, async (req, res) => {
     res.json(result);
   } catch (err) {
     res.status(503).json({ error: 'ML service offline' });
+  }
+});
+
+// POST /api/ml/suggest-duration — Feature 5: smart duration recommendation
+router.post('/suggest-duration', protect, async (req, res) => {
+  try {
+    const result = await proxyToML('/suggest-duration', req.body);
+    res.json(result);
+  } catch {
+    res.json({ suggested_duration: null, reason: 'ML service offline' });
+  }
+});
+
+// GET /api/ml/permission-creep — Feature 6: detect permission creep
+router.get('/permission-creep', protect, async (req, res) => {
+  try {
+    const { app_name } = req.query;
+    if (!app_name) return res.status(400).json({ error: 'app_name required' });
+    const result = await consentService.detectPermissionCreep(app_name);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to check permission creep' });
   }
 });
 

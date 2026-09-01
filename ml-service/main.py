@@ -753,6 +753,34 @@ def check_phishing(req: PhishingCheckRequest):
 
 
 # ---------------------------------------------------------------------------
+# Feature 5 — Smart Duration Recommender
+# ---------------------------------------------------------------------------
+
+@app.post("/suggest-duration")
+def suggest_duration(req: ConsentScoreRequest):
+    """Recommend the safest appropriate consent duration based on data type + purpose."""
+    dt = req.data_type.lower()
+    purpose = req.purpose.lower()
+    is_suspicious = any(k in purpose for k in SUSPICIOUS_PURPOSES)
+    is_high_risk = any(k in dt for k in HIGH_RISK_DATA)
+    is_medium_risk = any(k in dt for k in MEDIUM_RISK_DATA)
+
+    if is_high_risk and is_suspicious:
+        return {"suggested_duration": "7 Days", "reason": "High-risk data + suspicious purpose — minimum duration strongly recommended", "confidence": "high"}
+    elif is_high_risk:
+        return {"suggested_duration": "30 Days", "reason": "Sensitive data type (identity/health/financial) — keep access short", "confidence": "high"}
+    elif is_suspicious:
+        return {"suggested_duration": "14 Days", "reason": "Purpose involves marketing or data sharing — minimal duration advised", "confidence": "high"}
+    elif is_medium_risk:
+        days = days_from_duration(req.duration)
+        if days > 180:
+            return {"suggested_duration": "3 Months", "reason": "Moderate-risk data — 3 months balances usability and privacy", "confidence": "medium"}
+        return {"suggested_duration": req.duration, "reason": "Duration looks appropriate for this data type", "confidence": "medium"}
+    else:
+        return {"suggested_duration": "6 Months", "reason": "Low-risk data — 6 months is a reasonable standard duration", "confidence": "low"}
+
+
+# ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
 

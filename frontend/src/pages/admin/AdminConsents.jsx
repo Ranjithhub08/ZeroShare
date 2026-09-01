@@ -34,8 +34,8 @@ const AdminConsents = () => {
     setLoading(true);
     try {
       const res = await api.get(`/consents?limit=20&page=${page}&sortBy=created_at&sortDir=DESC`);
-      setConsents(res.data.data?.consents || []);
-      setTotal(res.data.data?.total || 0);
+      setConsents(res.data.consents || res.data.data?.consents || []);
+      setTotal(res.data.total || res.data.data?.total || 0);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [page]);

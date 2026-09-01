@@ -34,8 +34,8 @@ const AdminDashboard = () => {
           api.get('/consents?limit=5&sortBy=created_at&sortDir=DESC'),
           api.get('/ml/risk-trends'),
         ]);
-        const consents = consentRes.data.data?.consents || [];
-        const total = consentRes.data.data?.total || 0;
+        const consents = consentRes.data.consents || consentRes.data.data?.consents || [];
+        const total = consentRes.data.total || consentRes.data.data?.total || 0;
         const granted = consents.filter(c => c.status === 'GRANTED').length;
         const pending = consents.filter(c => c.status === 'PENDING').length;
         const denied  = consents.filter(c => c.status === 'DENIED').length;

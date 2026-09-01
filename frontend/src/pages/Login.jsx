@@ -24,7 +24,8 @@ const Login = () => {
       if (result?.requires2FA) {
         navigate(`/verify-otp?token=${result.tempToken}&email=${encodeURIComponent(result.email)}&remember=${rememberMe}`);
       } else {
-        navigate('/dashboard');
+        // Route admin to admin portal, users to user portal
+        navigate(result?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');

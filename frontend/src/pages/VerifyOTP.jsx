@@ -50,8 +50,8 @@ const VerifyOTP = () => {
     setError('');
     setLoading(true);
     try {
-      await verifyOTP(tempToken, code, rememberMe);
-      navigate('/dashboard');
+      const user = await verifyOTP(tempToken, code, rememberMe);
+      navigate(user?.role === 'admin' ? '/admin/dashboard' : '/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid code. Please try again.');
       setOtp(['', '', '', '', '', '']);

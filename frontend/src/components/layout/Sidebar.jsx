@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Shield, FileCheck, Activity, Settings, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Shield, FileCheck, Activity, Settings, LogOut, ScanSearch } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
 
 const Sidebar = () => {
-  const { isAdmin, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -15,11 +15,11 @@ const Sidebar = () => {
   };
 
   const links = [
-    { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Data Vault', path: '/vault', icon: Shield },
-    { name: 'Consent Hub', path: '/consents', icon: FileCheck },
-    { name: 'Audit Trail', path: '/audit', icon: Activity },
-    ...(isAdmin ? [{ name: 'User Management', path: '/admin/users', icon: Users }] : []),
+    { name: 'My Dashboard',    path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Data Vault',      path: '/vault',     icon: Shield },
+    { name: 'My Requests',     path: '/consents',  icon: FileCheck },
+    { name: 'Audit Trail',     path: '/audit',     icon: Activity },
+    { name: 'Privacy Tools',   path: '/privacy',   icon: ScanSearch },
   ];
 
   const bottomLinks = [
@@ -82,7 +82,7 @@ const Sidebar = () => {
         </div>
         <div className="flex flex-col">
           <span className="text-xl font-bold tracking-tighter text-zinc-100 leading-none">ZeroShare</span>
-          <span className="text-[10px] font-medium tracking-widest text-primary uppercase mt-0.5 opacity-80">Elite Network</span>
+          <span className="text-[10px] font-medium tracking-widest text-primary uppercase mt-0.5 opacity-80">User Portal</span>
         </div>
       </div>
       

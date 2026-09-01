@@ -58,6 +58,17 @@ exports.revokeConsent = async (req, res) => {
   }
 };
 
+// PATCH /consents/:id/status — admin shorthand used by AdminConsents page
+exports.updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const updated = await consentService.updateConsentStatus(req.params.id, status, req.userId, req.userRole);
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+};
+
 exports.getHistory = async (req, res) => {
   try {
     const history = await consentService.getHistory(req.params.id, req.userId, req.userRole);

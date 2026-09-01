@@ -12,12 +12,19 @@ router.use(protect, adminOnly);
 router.get('/activity', async (req, res) => {
   try {
     const sessions = await db.query(`
-      SELECT s.id, s.user_id, s.ip_address, s.user_agent, s.created_at, s.last_used_at, s.is_revoked,
-             u.name, u.email, u.role, u.is_suspended
+      SELECT s.id, s.user_id, s.ip_address, s.user_agent, s.created_at,
+             COALESCE(s.last_used_at, s.created_at) as last_used_at,
+             s.is_revoked, u.name, u.email, u.role, u.is_suspended,
+             CASE
+               WHEN COALESCE(s.last_used_at, s.created_at) > NOW() - INTERVAL '30 minutes' THEN 'active'
+               ELSE 'idle'
+             END as activity_status
       FROM sessions s
       JOIN users u ON s.user_id = u.id
-      WHERE s.is_revoked = FALSE AND s.last_used_at > NOW() - INTERVAL '30 minutes'
-      ORDER BY s.last_used_at DESC
+      WHERE s.is_revoked = FALSE
+        AND COALESCE(s.last_used_at, s.created_at) > NOW() - INTERVAL '24 hours'
+      ORDER BY last_used_at DESC
+      LIMIT 100
     `);
     res.json({ success: true, data: sessions.rows });
   } catch (err) { res.status(500).json({ error: err.message }); }

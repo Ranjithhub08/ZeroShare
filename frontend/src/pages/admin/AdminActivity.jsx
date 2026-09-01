@@ -14,7 +14,7 @@ const AdminActivity = () => {
     setLoading(true);
     try {
       const res = await api.get('/admin/activity');
-      setSessions(res.data.data || []);
+      setSessions(res.data?.data || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -43,21 +43,25 @@ const AdminActivity = () => {
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Activity className="text-rose-400" size={28} /> Live Activity Monitor
           </h1>
-          <p className="text-muted-foreground mt-1">Users active in the last 30 minutes.</p>
+          <p className="text-muted-foreground mt-1">Sessions from the last 24 hours. Active = last seen within 30 min.</p>
         </div>
         <Button onClick={load} variant="outline" className="gap-2" disabled={loading}>
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 text-center border border-emerald-500/20 bg-emerald-500/5">
-          <p className="text-3xl font-bold text-emerald-400">{sessions.length}</p>
-          <p className="text-sm text-muted-foreground">Active Sessions</p>
+          <p className="text-3xl font-bold text-emerald-400">{sessions.filter(s => s.activity_status === 'active').length}</p>
+          <p className="text-sm text-muted-foreground">Active (30 min)</p>
+        </Card>
+        <Card className="p-4 text-center border border-yellow-500/20 bg-yellow-500/5">
+          <p className="text-3xl font-bold text-yellow-400">{sessions.length}</p>
+          <p className="text-sm text-muted-foreground">Sessions (24 hrs)</p>
         </Card>
         <Card className="p-4 text-center border border-blue-500/20 bg-blue-500/5">
           <p className="text-3xl font-bold text-blue-400">{new Set(sessions.map(s => s.user_id)).size}</p>
-          <p className="text-sm text-muted-foreground">Unique Users Online</p>
+          <p className="text-sm text-muted-foreground">Unique Users</p>
         </Card>
         <Card className="p-4 text-center border border-purple-500/20 bg-purple-500/5">
           <p className="text-3xl font-bold text-purple-400">{new Set(sessions.map(s => s.ip_address)).size}</p>
@@ -69,7 +73,7 @@ const AdminActivity = () => {
         {loading ? (
           <div className="p-8 text-center text-muted-foreground">Loading active sessions…</div>
         ) : sessions.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">No active sessions in the last 30 minutes.</div>
+          <div className="p-8 text-center text-muted-foreground">No sessions in the last 24 hours. Restart the backend if this seems wrong.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -101,8 +105,10 @@ const AdminActivity = () => {
                     <td className="px-4 py-3 text-xs text-emerald-400 font-medium">{timeAgo(s.last_used_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-xs text-emerald-400">Active</span>
+                        <span className={`h-2 w-2 rounded-full ${s.activity_status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-500'}`} />
+                        <span className={`text-xs font-medium ${s.activity_status === 'active' ? 'text-emerald-400' : 'text-yellow-400'}`}>
+                          {s.activity_status === 'active' ? 'Active' : 'Idle'}
+                        </span>
                       </div>
                     </td>
                   </tr>

@@ -376,43 +376,107 @@ async def analyze_website(req: WebsiteAnalysisRequest):
         factors.append(f"⚠️ Could not connect to website: unreachable or invalid URL")
         fetch_failed = True
 
+    # ── Known clone/mirror/unofficial sites ─────────────────────────────────
+    KNOWN_CLONES = [
+        ('nitmirror', 'Netflix'), ('netflixmirror', 'Netflix'),
+        ('instagrammirror', 'Instagram'), ('fbmirror', 'Facebook'),
+        ('youtubemirror', 'YouTube'), ('gmailmirror', 'Gmail'),
+    ]
+    for pattern, brand in KNOWN_CLONES:
+        if pattern in domain:
+            score += 40
+            factors.append(f"🔴 CLONE SITE DETECTED — Unofficial mirror of {brand}. Logging in here will expose your {brand} credentials to unknown operators.")
+            break
+
     if not fetch_failed:
-        # ── Signal 3: Privacy Policy ─────────────────────────────────────────
+        # ── Signal 3: OAuth / Social Login Detection ─────────────────────────
+        oauth_providers = []
+        if re.search(r'accounts\.google\.com|gsi/client|google.*sign.?in|sign.?in.*google|btn-google', html):
+            oauth_providers.append('Google')
+        if re.search(r'connect\.facebook\.net|fb-login|facebook.*login|login.*facebook|fb_login', html):
+            oauth_providers.append('Facebook')
+        if re.search(r'appleid\.apple\.com|sign.?in.*apple|apple.*sign.?in', html):
+            oauth_providers.append('Apple')
+        if re.search(r'login\.microsoftonline\.com|microsoft.*login|azure.*login|sign.?in.*microsoft', html):
+            oauth_providers.append('Microsoft')
+        if re.search(r'api\.twitter\.com|sign.?in.*twitter|twitter.*login', html):
+            oauth_providers.append('Twitter/X')
+        if re.search(r'github\.com/login|sign.?in.*github|github.*oauth', html):
+            oauth_providers.append('GitHub')
+
+        if oauth_providers:
+            score += 15 * len(oauth_providers)
+            providers_str = ', '.join(oauth_providers)
+            factors.append(f"⚠️ OAUTH LOGIN DETECTED — Site offers '{providers_str}' sign-in. If you log in, {providers_str} will share your profile data (name, email, photo) with this site. Only proceed if you trust this site.")
+        else:
+            factors.append("✅ No social OAuth login detected")
+
+        # ── Signal 4: Third-party Trackers ───────────────────────────────────
+        trackers = []
+        if re.search(r'google-analytics\.com|gtag\(|ga\(\'send|googletagmanager', html):
+            trackers.append('Google Analytics')
+        if re.search(r'connect\.facebook\.net.*fbevents|fbq\(|facebook pixel', html):
+            trackers.append('Facebook Pixel')
+        if re.search(r'hotjar\.com|hotjar', html):
+            trackers.append('Hotjar (session recording)')
+        if re.search(r'mixpanel\.com|mixpanel\.track', html):
+            trackers.append('Mixpanel')
+        if re.search(r'segment\.com|analytics\.js', html):
+            trackers.append('Segment')
+        if re.search(r'clarity\.ms|microsoft.*clarity', html):
+            trackers.append('Microsoft Clarity (session recording)')
+        if re.search(r'tiktok.*pixel|analytics\.tiktok', html):
+            trackers.append('TikTok Pixel')
+
+        if trackers:
+            score += 5 * len(trackers)
+            factors.append(f"📡 Third-party trackers found: {', '.join(trackers)} — your browsing behaviour on this site is shared with these companies")
+        else:
+            factors.append("✅ No known third-party behaviour trackers detected")
+
+        # ── Signal 5: Third-party Form Submission ────────────────────────────
+        form_actions = re.findall(r'<form[^>]+action=["\']([^"\']+)["\']', html)
+        external_forms = [a for a in form_actions if a.startswith('http') and domain not in a]
+        if external_forms:
+            score += 20
+            factors.append(f"🔴 Form submits data to external server — your input (email, password) may go to a third party")
+
+        # ── Signal 6: Privacy Policy ─────────────────────────────────────────
         if re.search(r'privacy[\s\-_]?policy|privacy[\s\-_]?notice|datenschutz', html):
             factors.append("✅ Privacy policy detected — required by GDPR/DPDPA")
         else:
             score += 25
             factors.append("🔴 No privacy policy found — legally required; HIGH risk for data sharing")
 
-        # ── Signal 4: Terms of Service ───────────────────────────────────────
-        if re.search(r'terms\s+of\s+(service|use)|terms\s+and\s+conditions|terms\s*&amp;\s*conditions', html):
+        # ── Signal 7: Terms of Service ───────────────────────────────────────
+        if re.search(r'terms\s+of\s+(service|use)|terms\s+and\s+conditions', html):
             factors.append("✅ Terms of service found")
         else:
             score += 10
             factors.append("⚠️ No terms of service found — unclear legal obligations")
 
-        # ── Signal 5: Contact Information ────────────────────────────────────
+        # ── Signal 8: Contact Information ────────────────────────────────────
         if re.search(r'contact[\s\-]?us|support@|info@|help@|mailto:', html):
-            factors.append("✅ Contact information found — accountable organisation")
+            factors.append("✅ Contact information found")
         else:
             score += 5
-            factors.append("⚠️ No contact information found — difficult to reach if issues arise")
+            factors.append("⚠️ No contact information found")
 
-        # ── Signal 6: Cookie Consent / GDPR ──────────────────────────────────
+        # ── Signal 9: Cookie Consent / GDPR ──────────────────────────────────
         if re.search(r'cookie\s*consent|accept\s*cookie|gdpr|we use cookies|cookie\s*policy', html):
-            factors.append("✅ Cookie consent / GDPR compliance mechanism detected")
+            factors.append("✅ Cookie consent / GDPR mechanism detected")
         else:
             score += 5
-            factors.append("⚠️ No cookie consent detected — possible GDPR non-compliance")
+            factors.append("⚠️ No cookie consent detected")
 
-        # ── Signal 7: Suspicious Scripts ─────────────────────────────────────
+        # ── Signal 10: Suspicious Scripts ────────────────────────────────────
         if any(p in html for p in SUSPICIOUS_SCRIPTS):
             score += 30
             factors.append("🔴 Suspicious scripts detected — possible cryptominer or malware")
         else:
             factors.append("✅ No known malicious scripts detected")
 
-        # ── Signal 8: Security Headers ───────────────────────────────────────
+        # ── Signal 11: Security Headers ──────────────────────────────────────
         missing_headers = []
         if 'x-frame-options' not in resp_headers:
             missing_headers.append('X-Frame-Options')
@@ -429,9 +493,9 @@ async def analyze_website(req: WebsiteAnalysisRequest):
         else:
             factors.append("✅ All key security headers present")
 
-        # ── Signal 9: Login / Data Collection ────────────────────────────────
-        if re.search(r'<input[^>]+type=["\']password["\']|sign[\s\-]?in|log[\s\-]?in', html):
-            factors.append("ℹ️ Site collects credentials — ensure you trust this organisation")
+        # ── Signal 12: Password field (credential collection) ────────────────
+        if re.search(r'type=["\']password["\']', html):
+            factors.append("ℹ️ Site collects passwords — only enter credentials if you fully trust this site")
 
     score = min(score, 100)
 

@@ -781,6 +781,111 @@ def suggest_duration(req: ConsentScoreRequest):
 
 
 # ---------------------------------------------------------------------------
+# Feature 9 — Data Minimization Checker
+# ---------------------------------------------------------------------------
+
+# Maps purpose keywords → what data types are actually needed for that purpose
+PURPOSE_DATA_MAP = {
+    "weather":        ["location", "gps", "zip", "city"],
+    "navigation":     ["location", "gps", "address"],
+    "music":          ["email"],
+    "streaming":      ["email", "payment", "billing"],
+    "food delivery":  ["location", "address", "phone", "email", "payment"],
+    "ride sharing":   ["location", "phone", "email", "payment"],
+    "social":         ["email", "phone", "name", "photo", "contacts"],
+    "fitness":        ["location", "health", "activity", "email"],
+    "finance":        ["bank", "financial", "tax", "income", "identity", "ssn"],
+    "healthcare":     ["medical", "health", "insurance", "identity"],
+    "education":      ["email", "name", "age"],
+    "shopping":       ["email", "address", "payment", "phone"],
+    "advertising":    ["email", "browsing"],
+    "analytics":      ["browsing", "activity"],
+    "authentication": ["email", "phone"],
+    "verification":   ["identity", "passport", "aadhaar", "ssn", "national id"],
+}
+
+# Data types that are almost never justified
+RARELY_JUSTIFIED = ["genetic", "biometric", "fingerprint", "retina", "dna"]
+
+class MinimizationRequest(BaseModel):
+    app_name: str
+    data_type: str
+    purpose: str
+
+@app.post("/check-minimization")
+def check_minimization(req: MinimizationRequest):
+    """Detect if an app is asking for more data than its stated purpose requires."""
+    dt = req.data_type.lower()
+    purpose = req.purpose.lower()
+    app = req.app_name.lower()
+
+    flags = []
+    safe_signals = []
+    excessive = False
+    severity = "low"
+
+    # ── Check: data type is rarely justified ──────────────────────────────────
+    if any(k in dt for k in RARELY_JUSTIFIED):
+        flags.append(f"🔴 '{req.data_type}' is rarely justified for any consumer app — extremely sensitive biometric/genetic data")
+        excessive = True
+        severity = "high"
+
+    # ── Check: purpose vs expected data types ─────────────────────────────────
+    matched_purpose = None
+    for key, allowed_types in PURPOSE_DATA_MAP.items():
+        if key in purpose or key in app:
+            matched_purpose = key
+            # Check if current data type is relevant
+            is_relevant = any(allowed in dt or dt in allowed for allowed in allowed_types)
+            if not is_relevant:
+                flags.append(
+                    f"⚠️ A '{key}' app typically needs: {', '.join(allowed_types)} — "
+                    f"but is requesting '{req.data_type}' which seems excessive"
+                )
+                excessive = True
+                severity = "high" if any(k in dt for k in HIGH_RISK_DATA) else "medium"
+            else:
+                safe_signals.append(f"✅ '{req.data_type}' is expected for a {key} purpose")
+            break
+
+    # ── Check: high-risk data for advertising/analytics ───────────────────────
+    if any(k in purpose for k in ["advertising", "marketing", "analytics", "profiling"]):
+        if any(k in dt for k in HIGH_RISK_DATA):
+            flags.append(
+                f"🔴 Highly sensitive data ('{req.data_type}') requested for '{req.purpose}' — "
+                f"advertising/analytics never requires identity or medical data"
+            )
+            excessive = True
+            severity = "high"
+
+    # ── Check: no recognizable purpose match ──────────────────────────────────
+    if matched_purpose is None and not any(k in dt for k in RARELY_JUSTIFIED):
+        safe_signals.append("ℹ️ Could not map purpose to a known category — manual review recommended")
+
+    if not flags:
+        safe_signals.append(f"✅ '{req.data_type}' appears proportionate to the stated purpose")
+
+    verdict = (
+        "🔴 EXCESSIVE DATA REQUEST — This app is collecting more data than its purpose requires"
+        if severity == "high" else
+        "🟡 POSSIBLY EXCESSIVE — Some data may be unnecessary for this purpose"
+        if severity == "medium" else
+        "🟢 Data request appears proportionate to the stated purpose"
+    )
+
+    return {
+        "excessive": excessive,
+        "severity": severity,
+        "verdict": verdict,
+        "flags": flags,
+        "safe_signals": safe_signals,
+        "app_name": req.app_name,
+        "data_type": req.data_type,
+        "purpose": req.purpose,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
 

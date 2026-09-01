@@ -94,6 +94,18 @@ router.post('/suggest-duration', protect, async (req, res) => {
   }
 });
 
+// POST /api/ml/check-minimization — Feature 9: data minimization checker
+router.post('/check-minimization', protect, async (req, res) => {
+  try {
+    const { app_name, data_type, purpose } = req.body;
+    if (!app_name || !data_type || !purpose) return res.status(400).json({ error: 'app_name, data_type, and purpose are required' });
+    const result = await proxyToML('/check-minimization', { app_name, data_type, purpose });
+    res.json(result);
+  } catch (err) {
+    res.json({ excessive: false, severity: 'low', verdict: 'ML service offline', flags: [], safe_signals: [] });
+  }
+});
+
 // GET /api/ml/permission-creep — Feature 6: detect permission creep
 router.get('/permission-creep', protect, async (req, res) => {
   try {

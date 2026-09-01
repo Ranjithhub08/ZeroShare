@@ -109,21 +109,32 @@ const ConsentRequests = () => {
 
   // Debounced ML score call
   const [durationSuggestion, setDurationSuggestion] = useState(null);
+  const [minimizationWarning, setMinimizationWarning] = useState(null);
 
   const mlDebounceRef = React.useRef(null);
   const fetchMlPreview = React.useCallback((formData) => {
     clearTimeout(mlDebounceRef.current);
-    if (!formData.data_type || !formData.purpose) { setMlPreview(null); setDurationSuggestion(null); return; }
+    if (!formData.data_type || !formData.purpose) {
+      setMlPreview(null); setDurationSuggestion(null); setMinimizationWarning(null); return;
+    }
     mlDebounceRef.current = setTimeout(async () => {
       setMlPreviewLoading(true);
       try {
-        const [scoreRes, durationRes] = await Promise.all([
+        const appName = formData.app_name || formData.requester_url || 'unknown';
+        const [scoreRes, durationRes, minimRes] = await Promise.all([
           api.post('/ml/score', formData),
           api.post('/ml/suggest-duration', formData).catch(() => ({ data: null })),
+          api.post('/ml/check-minimization', {
+            app_name: appName,
+            data_type: formData.data_type,
+            purpose: formData.purpose,
+          }).catch(() => ({ data: null })),
         ]);
         setMlPreview(scoreRes.data);
         if (durationRes.data?.suggested_duration) setDurationSuggestion(durationRes.data);
         else setDurationSuggestion(null);
+        if (minimRes.data?.excessive) setMinimizationWarning(minimRes.data);
+        else setMinimizationWarning(null);
       } catch { /* ML offline — ignore */ }
       finally { setMlPreviewLoading(false); }
     }, 600);
@@ -845,6 +856,20 @@ const ConsentRequests = () => {
                   <Zap className="h-3 w-3 shrink-0" />
                   <span>💡 ML suggests: <strong>{durationSuggestion.suggested_duration}</strong> — {durationSuggestion.reason} <span className="underline ml-1">Apply</span></span>
                 </button>
+              )}
+              {/* Feature 9 — Data Minimization Warning */}
+              {minimizationWarning && (
+                <div className={`flex items-start gap-2 mt-2 text-xs rounded-md px-3 py-2 border ${
+                  minimizationWarning.severity === 'high'
+                    ? 'text-red-400 bg-red-500/10 border-red-500/20'
+                    : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                }`}>
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold mb-0.5">⚖️ Data Minimization Alert</p>
+                    {minimizationWarning.flags.map((f, i) => <p key={i}>{f}</p>)}
+                  </div>
+                </div>
               )}
             </div>
 

@@ -338,40 +338,26 @@ const ConsentRequests = () => {
       header: '',
       accessor: 'actions',
       render: (row) => (
-        <div className="flex justify-end gap-1">
+        <div className="flex justify-end gap-1 items-center">
           {row.status === 'PENDING' && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
-                onClick={(e) => { e.stopPropagation(); handleAction(row.id, 'APPROVE'); }}
-                title="Approve"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                onClick={(e) => { e.stopPropagation(); handleAction(row.id, 'REJECT'); }}
-                title="Reject"
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </>
+            <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1">
+              ⏳ Awaiting admin review
+            </span>
           )}
           {row.status === 'GRANTED' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-3 text-xs text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 gap-1.5"
-              onClick={(e) => { e.stopPropagation(); handleAction(row.id, 'REVOKE'); }}
-              title="Revoke access"
-            >
-              <ShieldOff className="h-3.5 w-3.5" />
-              Revoke
-            </Button>
+            <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-1">
+              ✅ Approved by admin
+            </span>
+          )}
+          {row.status === 'DENIED' && (
+            <span className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-2 py-1">
+              ❌ Denied by admin
+            </span>
+          )}
+          {row.status === 'REVOKED' && (
+            <span className="text-xs text-zinc-400 bg-zinc-500/10 border border-zinc-500/20 rounded-md px-2 py-1">
+              🚫 Revoked
+            </span>
           )}
           <Button
             variant="ghost"

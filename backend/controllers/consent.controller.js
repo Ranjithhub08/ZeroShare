@@ -1,4 +1,8 @@
 const consentService = require('../services/consent.service');
+const db = require('../database/db');
+const notifService = require('../services/notification.service');
+
+const SUPER_ADMIN_EMAIL = 'ranjithkumarhub@gmail.com';
 
 exports.createConsent = async (req, res) => {
   try {
@@ -14,6 +18,22 @@ exports.createConsent = async (req, res) => {
     // Feature 4 — Anomaly detection: check if app is requesting new data type
     const anomaly = await consentService.detectAnomaly(app_name || requester_url, data_type);
     const result = await consentService.createConsent(req.userId, { app_name, data_type, purpose, duration, requester_type, requester_url });
+
+    // Notify super-admin of new consent request
+    try {
+      const adminRes = await db.query('SELECT id FROM users WHERE email=$1', [SUPER_ADMIN_EMAIL]);
+      if (adminRes.rows.length > 0) {
+        const userRes = await db.query('SELECT name, email FROM users WHERE id=$1', [req.userId]);
+        const userName = userRes.rows[0]?.name || userRes.rows[0]?.email || 'A user';
+        const appLabel = app_name || requester_url || 'Unknown app';
+        await notifService.create(
+          adminRes.rows[0].id,
+          '📋 New Consent Request',
+          `${userName} has requested consent for "${appLabel}" to access their ${data_type} (Purpose: ${purpose}). Risk: ${result.risk_level?.toUpperCase()}. Please review in Admin → All Consents.`
+        );
+      }
+    } catch (e) { /* non-fatal */ }
+
     res.status(201).json({ success: true, data: result, anomaly: anomaly || null });
   } catch (err) {
     console.error('createConsent error:', err);

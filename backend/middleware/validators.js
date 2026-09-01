@@ -59,14 +59,14 @@ exports.verifyOTP = [
 
 exports.createConsent = [
   body('app_name')
+    .optional({ checkFalsy: true })
     .trim()
-    .notEmpty().withMessage('App name is required')
-    .isLength({ max: 100 }).withMessage('App name must be under 100 characters')
+    .isLength({ max: 200 }).withMessage('App name must be under 200 characters')
     .escape(),
   body('data_type')
     .trim()
     .notEmpty().withMessage('Data type is required')
-    .isLength({ max: 100 }).withMessage('Data type must be under 100 characters')
+    .isLength({ max: 200 }).withMessage('Data type must be under 200 characters')
     .escape(),
   body('purpose')
     .trim()
@@ -76,6 +76,12 @@ exports.createConsent = [
     .trim()
     .notEmpty().withMessage('Duration is required')
     .isLength({ max: 50 }).withMessage('Duration must be under 50 characters'),
+  body('requester_type')
+    .optional()
+    .isIn(['app', 'website']).withMessage('requester_type must be app or website'),
+  body('requester_url')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: true }).withMessage('requester_url must be a valid URL'),
 ];
 
 // ── User ─────────────────────────────────────────────────────────────────────

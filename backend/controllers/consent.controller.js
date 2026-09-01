@@ -2,13 +2,19 @@ const consentService = require('../services/consent.service');
 
 exports.createConsent = async (req, res) => {
   try {
-    const { app_name, data_type, purpose, duration } = req.body;
-    if (!app_name || !data_type || !purpose || !duration) {
-      return res.status(400).json({ success: false, error: 'app_name, data_type, purpose, and duration are required' });
+    const { app_name, data_type, purpose, duration, requester_type = 'app', requester_url = null } = req.body;
+    // For websites, app_name can be empty (URL is used as display name)
+    const isWebsite = requester_type === 'website';
+    if ((!app_name && !isWebsite) || !data_type || !purpose || !duration) {
+      return res.status(400).json({ success: false, error: 'data_type, purpose, and duration are required' });
     }
-    const result = await consentService.createConsent(req.userId, { app_name, data_type, purpose, duration });
+    if (isWebsite && !requester_url) {
+      return res.status(400).json({ success: false, error: 'requester_url is required for website type' });
+    }
+    const result = await consentService.createConsent(req.userId, { app_name, data_type, purpose, duration, requester_type, requester_url });
     res.status(201).json({ success: true, data: result });
   } catch (err) {
+    console.error('createConsent error:', err);
     res.status(500).json({ success: false, error: 'Failed to create consent' });
   }
 };

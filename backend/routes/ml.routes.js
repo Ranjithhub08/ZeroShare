@@ -152,6 +152,86 @@ router.get('/anomaly', protect, async (req, res) => {
   }
 });
 
+// GET /api/ml/privacy-summary — Feature 11: AI summary of consent history
+router.get('/privacy-summary', protect, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Fetch all consents for this user
+    const result = await db.query(
+      `SELECT app_name, data_type, purpose, duration, status, risk_level, risk_score, expires_at, created_at
+       FROM consents WHERE user_id = $1 ORDER BY created_at DESC`,
+      [userId]
+    );
+    const consents = result.rows;
+    if (consents.length === 0) {
+      return res.json({ summary: "You haven't shared any data yet. Grant your first consent to see your privacy summary here.", stats: {}, insights: [], score: 100 });
+    }
+
+    const granted = consents.filter(c => c.status === 'GRANTED');
+    const denied  = consents.filter(c => c.status === 'DENIED');
+    const revoked = consents.filter(c => c.status === 'REVOKED');
+    const pending = consents.filter(c => c.status === 'PENDING');
+
+    const now = new Date();
+    const expiringSoon = granted.filter(c => c.expires_at && new Date(c.expires_at) > now && (new Date(c.expires_at) - now) < 7 * 24 * 60 * 60 * 1000);
+    const highRisk = granted.filter(c => c.risk_level === 'high');
+
+    // Unique data types shared
+    const sharedTypes = [...new Set(granted.map(c => c.data_type.toLowerCase()))];
+    const uniqueApps  = [...new Set(granted.map(c => c.app_name))];
+
+    // Privacy score: start at 100, deduct for risky patterns
+    let privacyScore = 100;
+    privacyScore -= highRisk.length * 10;
+    privacyScore -= expiringSoon.length * 5;
+    privacyScore -= granted.filter(c => !c.expires_at).length * 3; // permanent consents
+    privacyScore = Math.max(0, Math.min(100, privacyScore));
+
+    // Build insights
+    const insights = [];
+    if (highRisk.length > 0) insights.push(`🔴 You have ${highRisk.length} high-risk active consent${highRisk.length > 1 ? 's' : ''} — consider reviewing them.`);
+    if (expiringSoon.length > 0) insights.push(`⏰ ${expiringSoon.length} consent${expiringSoon.length > 1 ? 's' : ''} expire within 7 days — renew or revoke soon.`);
+    const permanent = granted.filter(c => !c.expires_at);
+    if (permanent.length > 0) insights.push(`♾️ ${permanent.length} consent${permanent.length > 1 ? 's' : ''} have no expiry date (permanent access) — consider adding time limits.`);
+    if (denied.length > 0) insights.push(`✅ You've denied ${denied.length} request${denied.length > 1 ? 's' : ''} — good job protecting your data.`);
+    if (revoked.length > 0) insights.push(`🔒 You've revoked ${revoked.length} consent${revoked.length > 1 ? 's' : ''} in the past.`);
+    if (sharedTypes.length > 5) insights.push(`📊 You're sharing ${sharedTypes.length} different types of data — review if all are still necessary.`);
+
+    // Natural language summary
+    const riskLabel = privacyScore >= 80 ? 'strong' : privacyScore >= 60 ? 'moderate' : 'weak';
+    const summary = [
+      `Your privacy health is ${riskLabel} (${privacyScore}/100).`,
+      granted.length > 0
+        ? `You currently share data with ${uniqueApps.length} app${uniqueApps.length > 1 ? 's' : ''}, covering ${sharedTypes.length} type${sharedTypes.length > 1 ? 's' : ''} of personal data (${sharedTypes.slice(0,4).join(', ')}${sharedTypes.length > 4 ? '...' : ''}).`
+        : 'You have no active data-sharing consents.',
+      denied.length > 0 ? `You've denied ${denied.length} request${denied.length > 1 ? 's' : ''} and revoked ${revoked.length}.` : '',
+      expiringSoon.length > 0 ? `⚠️ ${expiringSoon.length} consent${expiringSoon.length > 1 ? 's' : ''} expire in the next 7 days.` : '',
+    ].filter(Boolean).join(' ');
+
+    res.json({
+      summary,
+      score: privacyScore,
+      stats: {
+        total: consents.length,
+        granted: granted.length,
+        denied: denied.length,
+        revoked: revoked.length,
+        pending: pending.length,
+        high_risk_active: highRisk.length,
+        expiring_soon: expiringSoon.length,
+        unique_apps: uniqueApps.length,
+        unique_data_types: sharedTypes.length,
+        permanent_consents: permanent.length,
+      },
+      insights,
+      top_apps: uniqueApps.slice(0, 5),
+      shared_data_types: sharedTypes,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate privacy summary' });
+  }
+});
+
 // GET /api/ml/health — ML service status
 router.get('/health', protect, async (req, res) => {
   try {

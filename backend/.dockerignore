@@ -4,3 +4,10 @@ npm-debug.log
 .env.*
 !.env.example
 *.md
+uploads/avatars/*
+uploads/data/*
+test-email.js
+database/create-admin.js
+database/create-user.js
+database/migrate.js
+database/seed.js

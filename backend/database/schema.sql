@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -7,33 +7,114 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE user_data (
+CREATE TABLE IF NOT EXISTS user_data (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    data_type VARCHAR(100) NOT NULL, -- e.g., 'Address', 'Medical Record'
+    data_type VARCHAR(100) NOT NULL,
     value TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE consents (
+CREATE TABLE IF NOT EXISTS consents (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     app_name VARCHAR(255) NOT NULL,
     data_type VARCHAR(255) NOT NULL,
     purpose TEXT NOT NULL,
     duration VARCHAR(100) NOT NULL,
-    risk_level VARCHAR(50) NOT NULL DEFAULT 'low', -- 'low', 'medium', 'high'
-    status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'GRANTED', 'DENIED', 'REVOKED'
+    risk_level VARCHAR(50) NOT NULL DEFAULT 'low',
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     event_type VARCHAR(255) NOT NULL,
     app_name VARCHAR(255),
     data_accessed VARCHAR(255),
     status VARCHAR(50) NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255),
+    event_type VARCHAR(255),
+    message TEXT,
+    type VARCHAR(50) DEFAULT 'info',
+    status VARCHAR(50) DEFAULT 'unread',
+    is_read BOOLEAN DEFAULT FALSE,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS applications (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    trust_score FLOAT DEFAULT 0.5,
+    owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS consent_assets (
+    id SERIAL PRIMARY KEY,
+    consent_id INTEGER REFERENCES consents(id) ON DELETE CASCADE,
+    asset_id INTEGER REFERENCES user_data(id) ON DELETE CASCADE,
+    permission VARCHAR(20) DEFAULT 'READ',
+    status VARCHAR(20) DEFAULT 'APPROVED'
+);
+
+CREATE TABLE IF NOT EXISTS access_tokens (
+    id SERIAL PRIMARY KEY,
+    consent_id INTEGER REFERENCES consents(id) ON DELETE CASCADE,
+    application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+    token_hash VARCHAR(64) UNIQUE NOT NULL,
+    scope JSONB,
+    purpose TEXT,
+    issued_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    revoked_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+CREATE TABLE IF NOT EXISTS access_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+    consent_id INTEGER REFERENCES consents(id) ON DELETE SET NULL,
+    asset_id INTEGER REFERENCES user_data(id) ON DELETE SET NULL,
+    action VARCHAR(20) DEFAULT 'READ',
+    purpose TEXT,
+    result VARCHAR(20) NOT NULL,
+    denial_reason VARCHAR(100),
+    ip_address VARCHAR(45),
+    device TEXT,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS anomaly_events (
+    id SERIAL PRIMARY KEY,
+    application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    access_log_id INTEGER REFERENCES access_logs(id) ON DELETE SET NULL,
+    anomaly_score INTEGER,
+    severity VARCHAR(20),
+    reason TEXT,
+    status VARCHAR(20) DEFAULT 'OPEN',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS risk_assessments (
+    id SERIAL PRIMARY KEY,
+    consent_id INTEGER REFERENCES consents(id) ON DELETE CASCADE,
+    model_version VARCHAR(50) DEFAULT 'rule-based',
+    risk_score INTEGER,
+    risk_level VARCHAR(20),
+    features JSONB,
+    recommendation JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

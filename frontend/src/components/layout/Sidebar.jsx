@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Shield, FileCheck, Activity, Settings, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Shield, FileCheck, Activity, Settings, Users, LogOut, AppWindow, ShieldAlert } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
 
@@ -18,6 +18,8 @@ const Sidebar = () => {
     { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Data Vault', path: '/vault', icon: Shield },
     { name: 'Consent Hub', path: '/consents', icon: FileCheck },
+    { name: 'Simulator', path: '/simulator', icon: AppWindow },
+    { name: 'Security Center', path: '/security', icon: ShieldAlert },
     { name: 'Audit Trail', path: '/audit', icon: Activity },
     ...(isAdmin ? [{ name: 'User Management', path: '/admin/users', icon: Users }] : []),
   ];

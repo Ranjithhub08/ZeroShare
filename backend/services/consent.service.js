@@ -1,6 +1,7 @@
 const db = require('../database/db');
 const notifService = require('./notification.service');
 const { sendEmail, templates } = require('./email.service');
+const auditChain = require('./auditChain.service');
 const http = require('http');
 
 // Call ML risk scoring microservice (non-blocking — falls back gracefully)
@@ -123,6 +124,25 @@ class ConsentService {
       DENIED:  `Your consent request from "${consent.app_name}" was denied.`,
       REVOKED: `Access for "${consent.app_name}" to your ${consent.data_type} has been revoked.`,
     };
+    // Auto-issue scoped access token when consent is GRANTED
+    if (status === 'GRANTED') {
+      try {
+        const accessTokenService = require('./accessToken.service');
+        await accessTokenService.issue(id);
+      } catch (e) { console.error('[Token] Auto-issue failed:', e.message); }
+    }
+    // Revoke tokens when consent is DENIED or REVOKED
+    if (status === 'DENIED' || status === 'REVOKED') {
+      try {
+        const accessTokenService = require('./accessToken.service');
+        await accessTokenService.revokeByConsent(id);
+      } catch (e) {}
+    }
+    // Audit log with hash chain
+    await auditChain.log({
+      userId, eventType: `CONSENT_${status}`,
+      appName: consent.app_name, dataAccessed: consent.data_type, status: 'SUCCESS'
+    });
     if (msgMap[status]) {
       await notifService.create(consent.user_id, `Consent ${status}`, msgMap[status]);
       // Send email to the user

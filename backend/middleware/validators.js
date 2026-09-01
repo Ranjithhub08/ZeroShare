@@ -66,8 +66,7 @@ exports.createConsent = [
   body('data_type')
     .trim()
     .notEmpty().withMessage('Data type is required')
-    .isLength({ max: 100 }).withMessage('Data type must be under 100 characters')
-    .escape(),
+    .isLength({ max: 500 }).withMessage('Data type must be under 500 characters'),
   body('purpose')
     .trim()
     .notEmpty().withMessage('Purpose is required')

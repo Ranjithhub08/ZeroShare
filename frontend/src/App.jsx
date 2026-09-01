@@ -14,6 +14,8 @@ import ConsentRequests from './pages/ConsentRequests';
 import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
+import Simulator from './pages/Simulator';
+import SecurityCenter from './pages/SecurityCenter';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -44,6 +46,8 @@ function AppRoutes() {
           <Route path="consents" element={<ConsentRequests />} />
           <Route path="audit" element={<AuditLogs />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="simulator" element={<Simulator />} />
+          <Route path="security" element={<SecurityCenter />} />
           <Route path="admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         </Route>
 

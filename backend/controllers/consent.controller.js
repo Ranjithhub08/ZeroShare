@@ -9,7 +9,8 @@ exports.createConsent = async (req, res) => {
     const result = await consentService.createConsent(req.userId, { app_name, data_type, purpose, duration });
     res.status(201).json({ success: true, data: result });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Failed to create consent' });
+    console.error('[createConsent] Error:', err.message);
+    res.status(500).json({ success: false, error: err.message || 'Failed to create consent' });
   }
 };
 

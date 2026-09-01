@@ -59,6 +59,12 @@ const runMigrations = async () => {
     await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS requester_url VARCHAR(500)`);
     // ML risk score column
     await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS risk_score INTEGER`);
+    // v2 tables
+    await db.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS sensitivity_level VARCHAR(20) DEFAULT 'MEDIUM'`);
+    await db.query(`ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS previous_hash VARCHAR(64)`);
+    await db.query(`ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS current_hash VARCHAR(64)`);
+    await db.query(`ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)`);
+    await db.query(`ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS device TEXT`);
     console.log('✅ Database migrations applied.');
   } catch (err) {
     console.error('❌ Migration error:', err.message);
@@ -92,6 +98,8 @@ const dataRoutes = require('./routes/data.routes');
 const searchRoutes = require('./routes/search.routes');
 const userRoutes = require('./routes/user.routes');
 const mlRoutes = require('./routes/ml.routes');
+const applicationRoutes = require('./routes/application.routes');
+const gatewayRoutes = require('./routes/gateway.routes');
 
 // Route Mounting
 app.use('/api/auth', authRoutes);
@@ -104,6 +112,8 @@ app.use('/api/data', dataRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/ml', mlRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/gateway', gatewayRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

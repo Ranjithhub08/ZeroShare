@@ -1,6 +1,7 @@
 const rateLimit = require('express-rate-limit');
 
 const loginLimiter = rateLimit({
+  validate: { xForwardedForHeader: false },
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
@@ -9,6 +10,7 @@ const loginLimiter = rateLimit({
 });
 
 const forgotPasswordLimiter = rateLimit({
+  validate: { xForwardedForHeader: false },
   windowMs: 60 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -17,6 +19,7 @@ const forgotPasswordLimiter = rateLimit({
 });
 
 const otpLimiter = rateLimit({
+  validate: { xForwardedForHeader: false },
   windowMs: 10 * 60 * 1000,
   max: 5,
   standardHeaders: true,

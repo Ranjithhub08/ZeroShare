@@ -1,102 +1,140 @@
 # ZeroShare – Privacy-First Data Consent Platform
 
-ZeroShare is a modern, professional SaaS platform designed to put users back in control of their personal data. It allows users to store sensitive information in a private vault and manage granular consent requests from third-party applications.
-
-## 🚀 Overview
-
-In an era of data exploitation, ZeroShare provides a secure, transparent bridge between users and applications. Built with a "Privacy-by-Design" philosophy, it features a premium dashboard for real-time monitoring and a robust backend for managing data governance.
-
-## ✨ Features
-
-- **Personal Data Vault**: Securely store and manage your sensitive identity, health, and financial data.
-- **Granular Consent Management**: Review, approve, or reject access requests from third-party apps with full transparency.
-- **Real-time Audit Logs**: A chronological, immutable record of every data access event and consent decision.
-- **Risk Assessment**: Clear visualization of request risk levels (Low, Medium, High).
-- **Intuitive SaaS Dashboard**: A premium, high-contrast dark mode interface built with React.
-
-## 🛠 Technology Stack
-
-- **Frontend**: React (Vite), Lucide Icons, Custom Design System
-- **Backend**: Node.js, Express
-- **Database**: PostgreSQL
-- **Infrastructure**: Docker
-
-## 🏗 System Architecture
-
-ZeroShare follows a modern layered architecture designed for security, scalability, and high-performance data processing.
+ZeroShare is a full-stack SaaS platform that puts users in control of their personal data. Users store sensitive information in an encrypted vault and manage granular consent requests from third-party apps and websites — with real-time risk scoring powered by an ML microservice.
 
 ![ZeroShare System Architecture](docs/architecture-diagram.png)
 
-### 1. Frontend Layer (React Dashboard)
-A high-fidelity, responsive SPA built with **React** and **Tailwind CSS**. It leverages **shadcn/ui** for premium components and **Framer Motion** for cinematic animations. It handles real-time data visualization, granular consent management, and secure vault interactions.
+## ✨ Features
 
-### 2. Backend API Layer (Node.js / Express)
-A robust **REST API Gateway** that serves as the logic engine. It manages cryptographic authorization flows, processes data access requests, and maintains an immutable ledger of system events.
+- **Encrypted Data Vault** — AES-256 encrypted storage for identity, health, and financial records
+- **Consent Management** — Approve, deny, or revoke third-party data access requests
+- **ML Risk Scoring** — Rule-based scoring on day 1; auto-retrains nightly on real admin decisions
+- **Real-time Notifications** — WebSocket-powered live alerts for consent events
+- **Immutable Audit Logs** — Hash-chained audit trail for every data access event
+- **2FA / OTP Auth** — Email-based OTP with session management
+- **Admin Panel** — User management, suspension, analytics, and system-wide audit view
+- **Security Center** — Active session management, anomaly detection, risk overview
 
-### 3. Database Layer (PostgreSQL)
-A managed **PostgreSQL** instance optimized for privacy governance. It stores encrypted user data, active consent permits, and comprehensive audit trails across structured tables including `users`, `user_data`, `consents`, and `audit_logs`.
+## 🛠 Tech Stack
 
-### 4. Analytics & Governance Layer
-A specialized sidecar service that aggregates system-wide metrics to generate real-time security insights and behavioral analytics for the user dashboard.
-
----
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS, shadcn/ui, Framer Motion |
+| Backend | Node.js, Express 5, PostgreSQL, WebSockets |
+| ML Service | Python 3.11, FastAPI, custom logistic regression |
+| Infrastructure | Docker, Docker Compose, Nginx |
+| CI | GitHub Actions |
 
 ## 📂 Project Structure
 
-```text
+```
 zeroshare/
-├── frontend/    # React SPA dashboard
-├── backend/     # Express REST API
-├── database/    # SQL schema and seeding scripts
-├── docs/        # Project documentation & assets
-└── docker/      # Infrastructure configuration
+├── frontend/        # React SPA (Vite + Nginx in Docker)
+├── backend/         # Express REST API + WebSocket server
+├── ml-service/      # FastAPI ML risk scoring microservice
+├── database/        # SQL schema and seed scripts
+├── docs/            # Architecture diagram, ML documentation
+└── docker-compose.yml
 ```
 
-## ⚙️ Installation Guide
+## 🚀 Quick Start (Docker — recommended)
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v16+)
-- [Docker & Docker Desktop](https://www.docker.com/products/docker-desktop/) (for PostgreSQL)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-### 1. Database Setup
-We use Docker to run a portable PostgreSQL instance:
+### 1. Configure environment
 ```bash
-docker run --name zeroshare-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=zeroshare -p 5432:5432 -d postgres:15-alpine
+cp backend/.env.example backend/.env
 ```
 
-### 2. Backend Setup
+Edit `backend/.env` and set:
+- `ENCRYPTION_KEY` — 64 hex chars: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- `JWT_SECRET` — long random string: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+- `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — Gmail app password for OTP emails
+
+### 2. Start all services
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost |
+| Backend API | http://localhost:5001 |
+| ML Service | http://localhost:8000 |
+
+### 3. Create admin user
+```bash
+docker exec -it zeroshare_api node database/create-admin.js
+```
+
+---
+
+## 🔧 Local Development (without Docker)
+
+### Backend
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Ensure .env values match your database credentials
-node database/seed.js # Initial data seed
-node server.js
-```
-
-### 3. Frontend Setup
-```bash
-cd frontend
-npm install
-cp .env.example .env
+cp .env.example .env   # fill in values
+node database/seed.js  # optional: seed demo data
 npm run dev
 ```
 
-## 📡 API Endpoints
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev            # runs on http://localhost:5173
+```
 
-### Consents
-- `GET /api/consents/list` - Fetch all consent requests
-- `POST /api/consents/approve` - Approve a request
-- `POST /api/consents/reject` - Reject a request
-
-### Audit Logs
-- `GET /api/audit/list` - Fetch system event history
-
-## 🔮 Future Enhancements
-- [ ] End-to-end encryption for vault data.
-- [ ] OAuth2 integration for 3rd party authentication.
-- [ ] Automated compliance reporting (GDPR/CCPA).
-- [ ] Mobile application for on-the-go consent management.
+### ML Service
+```bash
+cd ml-service
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
 
 ---
+
+## 🔑 Key Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `ENCRYPTION_KEY` | ✅ | 64-char hex key for AES-256 vault encryption |
+| `JWT_SECRET` | ✅ | Secret for signing JWT tokens |
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `SMTP_USER` / `SMTP_PASS` | ✅ | Gmail credentials for OTP emails |
+| `FRONTEND_URL` | ✅ | Used in password reset email links |
+
+## 📡 API Overview
+
+| Route | Description |
+|---|---|
+| `POST /api/auth/register` | Register new user |
+| `POST /api/auth/login` | Login (returns JWT or OTP challenge) |
+| `GET /api/consents` | List consent requests |
+| `PATCH /api/consents/:id` | Approve / deny / revoke consent |
+| `GET /api/audit` | Fetch audit log |
+| `GET /api/data` | List vault records |
+| `POST /api/data` | Add vault record |
+| `GET /api/analytics/summary` | Dashboard analytics |
+| `POST /api/ml/score` | Score a consent request |
+| `GET /health` | Backend health check |
+
+## 🧪 Tests
+
+```bash
+# Frontend
+cd frontend && npm test
+
+# Backend (syntax check)
+cd backend && node --check server.js
+
+# ML service (syntax check)
+python -m py_compile ml-service/main.py
+```
+
+---
+
 Built with ❤️ for Privacy.

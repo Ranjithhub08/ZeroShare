@@ -42,3 +42,31 @@ jobs:
         run: cd frontend && npm run build
       - name: Run frontend tests
         run: cd frontend && npm test
+
+  ml-service-check:
+    name: ML Service - Python Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ml-service deps
+        run: cd ml-service && pip install -r requirements.txt
+      - name: Syntax check
+        run: python -m py_compile ml-service/main.py
+
+  docker-build:
+    name: Docker - Build All Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [backend-check, frontend-build, ml-service-check]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t zeroshare-backend ./backend
+      - name: Build frontend image
+        run: docker build -t zeroshare-frontend ./frontend
+      - name: Build ml-service image
+        run: docker build -t zeroshare-ml ./ml-service

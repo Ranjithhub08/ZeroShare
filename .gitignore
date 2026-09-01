@@ -32,3 +32,12 @@ logs
 # Docker
 docker/data/
 docker/*.log
+
+# Uploaded files (runtime data, not source)
+backend/uploads/avatars/*
+backend/uploads/data/*
+!backend/uploads/avatars/.gitkeep
+!backend/uploads/data/.gitkeep
+
+# Vite cache
+frontend/vite.config.js.timestamp-*

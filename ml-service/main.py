@@ -781,6 +781,124 @@ def suggest_duration(req: ConsentScoreRequest):
 
 
 # ---------------------------------------------------------------------------
+# Feature 10 — Geo-Risk Detector
+# ---------------------------------------------------------------------------
+
+# Countries with high data-privacy risk (based on surveillance laws, data localization, GDPR adequacy)
+HIGH_RISK_COUNTRIES = {
+    "RU": ("Russia", "🔴", "Subject to SORM surveillance law — state can access all data without user consent"),
+    "CN": ("China", "🔴", "Subject to PIPL + state surveillance — data may be accessed by Chinese authorities"),
+    "KP": ("North Korea", "🔴", "State-controlled internet — extreme surveillance risk"),
+    "IR": ("Iran", "🔴", "State surveillance infrastructure — high interception risk"),
+    "BY": ("Belarus", "🔴", "Authoritarian surveillance state — close Russian data-sharing agreements"),
+    "MM": ("Myanmar", "🔴", "Military junta surveillance — high risk for dissidents"),
+    "CU": ("Cuba", "🟠", "State-controlled internet — limited privacy protections"),
+    "VE": ("Venezuela", "🟠", "Government surveillance of internet traffic reported"),
+    "PK": ("Pakistan", "🟠", "PECA surveillance law — broad government data access powers"),
+    "BD": ("Bangladesh", "🟠", "Digital Security Act — broad surveillance authority"),
+    "NG": ("Nigeria", "🟠", "Limited data protection enforcement"),
+    "VN": ("Vietnam", "🟠", "Cybersecurity law requires data localization and government access"),
+    "TR": ("Turkey", "🟠", "Broad internet censorship and surveillance laws"),
+}
+
+MEDIUM_RISK_COUNTRIES = {
+    "IN": ("India", "🟡", "PDPB not yet fully enacted — limited enforcement"),
+    "BR": ("Brazil", "🟡", "LGPD enacted but enforcement is new"),
+    "MX": ("Mexico", "🟡", "Limited data protection capacity"),
+    "ZA": ("South Africa", "🟡", "POPIA enacted but enforcement is developing"),
+}
+
+class GeoRiskRequest(BaseModel):
+    url: str
+
+@app.post("/check-geo-risk")
+async def check_geo_risk(req: GeoRiskRequest):
+    """Check which country a website is hosted in and assess data privacy risk."""
+    url = req.url.strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    parsed = urlparse(url)
+    domain = parsed.netloc or parsed.path
+    domain = re.sub(r'^www\.', '', domain.split(':')[0])
+
+    country_code = None
+    country_name = None
+    ip_address = None
+    geo_error = None
+
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            # Use ip-api.com (free, no key needed, 45 req/min)
+            resp = await client.get(f"http://ip-api.com/json/{domain}?fields=status,country,countryCode,city,isp,org,query")
+            data = resp.json()
+            if data.get("status") == "success":
+                country_code = data.get("countryCode", "")
+                country_name = data.get("country", "Unknown")
+                ip_address = data.get("query", "")
+                isp = data.get("isp", "")
+                org = data.get("org", "")
+                city = data.get("city", "")
+            else:
+                geo_error = "Could not resolve domain to IP"
+    except Exception as e:
+        geo_error = f"Geo lookup failed: {str(e)}"
+
+    if geo_error or not country_code:
+        return {
+            "domain": domain,
+            "ip": None,
+            "country_code": None,
+            "country_name": "Unknown",
+            "risk_level": "unknown",
+            "verdict": "⚪ Could not determine hosting country",
+            "flags": [f"ℹ️ {geo_error or 'Geo lookup unavailable'}"],
+            "safe_signals": [],
+            "isp": None, "city": None,
+        }
+
+    flags = []
+    safe_signals = []
+    risk_level = "low"
+    verdict = ""
+
+    if country_code in HIGH_RISK_COUNTRIES:
+        name, icon, reason = HIGH_RISK_COUNTRIES[country_code]
+        risk_level = "high"
+        flags.append(f"{icon} Hosted in {name} — {reason}")
+        flags.append("⚠️ Sharing personal data with this site may expose it to foreign government access")
+        verdict = f"🔴 HIGH GEO-RISK — Site hosted in {name}, a country with serious data privacy concerns"
+    elif country_code in MEDIUM_RISK_COUNTRIES:
+        name, icon, reason = MEDIUM_RISK_COUNTRIES[country_code]
+        risk_level = "medium"
+        flags.append(f"{icon} Hosted in {name} — {reason}")
+        verdict = f"🟡 MEDIUM GEO-RISK — Site hosted in {name}, data protection laws are developing"
+    else:
+        risk_level = "low"
+        safe_signals.append(f"✅ Hosted in {country_name} — generally adequate data protection laws")
+        verdict = f"🟢 LOW GEO-RISK — Site hosted in {country_name}"
+
+    # EU adequacy check
+    EU_ADEQUATE = {"US", "GB", "CA", "AU", "NZ", "JP", "KR", "IL", "CH", "NO", "IS", "LI",
+                   "DE", "FR", "NL", "SE", "FI", "DK", "ES", "IT", "PL", "PT", "BE", "AT", "IE"}
+    if country_code in EU_ADEQUATE and risk_level == "low":
+        safe_signals.append("🌍 Country has EU adequacy decision or strong privacy framework (GDPR-equivalent)")
+
+    return {
+        "domain": domain,
+        "ip": ip_address,
+        "country_code": country_code,
+        "country_name": country_name,
+        "city": city if 'city' in dir() else None,
+        "isp": isp if 'isp' in dir() else None,
+        "risk_level": risk_level,
+        "verdict": verdict,
+        "flags": flags,
+        "safe_signals": safe_signals,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Feature 9 — Data Minimization Checker
 # ---------------------------------------------------------------------------
 

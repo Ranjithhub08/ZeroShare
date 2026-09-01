@@ -89,13 +89,20 @@ const ConsentRequests = () => {
   const [websiteAnalysis, setWebsiteAnalysis] = useState(null);
   const [websiteAnalysisLoading, setWebsiteAnalysisLoading] = useState(false);
 
+  const [geoRisk, setGeoRisk] = useState(null);
+
   const analyzeWebsite = async () => {
     if (!websiteUrl.trim()) return;
     setWebsiteAnalysisLoading(true);
     setWebsiteAnalysis(null);
+    setGeoRisk(null);
     try {
-      const res = await api.post('/ml/analyze-website', { url: websiteUrl.trim() });
-      setWebsiteAnalysis(res.data);
+      const [siteRes, geoRes] = await Promise.all([
+        api.post('/ml/analyze-website', { url: websiteUrl.trim() }),
+        api.post('/ml/check-geo-risk', { url: websiteUrl.trim() }).catch(() => ({ data: null })),
+      ]);
+      setWebsiteAnalysis(siteRes.data);
+      if (geoRes.data) setGeoRisk(geoRes.data);
     } catch (err) {
       setWebsiteAnalysis({ error: 'Analysis failed — ML service may be offline' });
     } finally {
@@ -1111,6 +1118,24 @@ const ConsentRequests = () => {
           {websiteAnalysis?.error && (
             <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400 mt-2">
               {websiteAnalysis.error}
+            </div>
+          )}
+
+          {/* Feature 10 — Geo-Risk Card */}
+          {geoRisk && (
+            <div className={`mt-3 rounded-lg border p-3 text-sm ${
+              geoRisk.risk_level === 'high' ? 'border-rose-500/30 bg-rose-500/10' :
+              geoRisk.risk_level === 'medium' ? 'border-amber-500/30 bg-amber-500/10' :
+              'border-emerald-500/30 bg-emerald-500/10'
+            }`}>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">🌍 Geo-Risk Analysis</p>
+              <p className={`text-sm font-medium mb-1 ${
+                geoRisk.risk_level === 'high' ? 'text-rose-400' :
+                geoRisk.risk_level === 'medium' ? 'text-amber-400' : 'text-emerald-400'
+              }`}>{geoRisk.verdict}</p>
+              {geoRisk.ip && <p className="text-xs text-muted-foreground mb-1">IP: {geoRisk.ip} · {geoRisk.country_name}{geoRisk.city ? ` · ${geoRisk.city}` : ''}{geoRisk.isp ? ` · ${geoRisk.isp}` : ''}</p>}
+              {geoRisk.flags?.map((f, i) => <p key={i} className="text-xs text-rose-300 mt-0.5">{f}</p>)}
+              {geoRisk.safe_signals?.map((s, i) => <p key={i} className="text-xs text-emerald-400 mt-0.5">{s}</p>)}
             </div>
           )}
         </DialogContent>

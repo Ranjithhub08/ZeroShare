@@ -94,6 +94,18 @@ router.post('/suggest-duration', protect, async (req, res) => {
   }
 });
 
+// POST /api/ml/check-geo-risk — Feature 10: geo-risk detector
+router.post('/check-geo-risk', protect, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'url is required' });
+    const result = await proxyToML('/check-geo-risk', { url });
+    res.json(result);
+  } catch (err) {
+    res.json({ risk_level: 'unknown', verdict: 'Geo-risk check unavailable', flags: [], safe_signals: [] });
+  }
+});
+
 // POST /api/ml/check-minimization — Feature 9: data minimization checker
 router.post('/check-minimization', protect, async (req, res) => {
   try {

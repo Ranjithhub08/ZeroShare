@@ -31,6 +31,9 @@ import {
   ShieldOff,
   Globe,
   ExternalLink,
+  AlertTriangle,
+  Loader2,
+  ScanSearch,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +59,26 @@ const ConsentRequests = () => {
     purpose: '',
     duration: '30 Days'
   });
+
+  // Website Risk Analyzer
+  const [isWebsiteAnalyzerOpen, setIsWebsiteAnalyzerOpen] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [websiteAnalysis, setWebsiteAnalysis] = useState(null);
+  const [websiteAnalysisLoading, setWebsiteAnalysisLoading] = useState(false);
+
+  const analyzeWebsite = async () => {
+    if (!websiteUrl.trim()) return;
+    setWebsiteAnalysisLoading(true);
+    setWebsiteAnalysis(null);
+    try {
+      const res = await api.post('/ml/analyze-website', { url: websiteUrl.trim() });
+      setWebsiteAnalysis(res.data);
+    } catch (err) {
+      setWebsiteAnalysis({ error: 'Analysis failed — ML service may be offline' });
+    } finally {
+      setWebsiteAnalysisLoading(false);
+    }
+  };
 
   // Live ML risk preview in New Consent modal
   const [mlPreview, setMlPreview] = useState(null);
@@ -443,6 +466,9 @@ const ConsentRequests = () => {
             <Button variant="outline" className="gap-2 bg-card" onClick={downloadCSV}>
                <Download className="h-4 w-4" /> Export CSV
             </Button>
+            <Button variant="outline" className="gap-2 bg-card border-blue-500/30 text-blue-400 hover:bg-blue-500/10" onClick={() => { setIsWebsiteAnalyzerOpen(true); setWebsiteAnalysis(null); setWebsiteUrl(''); }}>
+               <ScanSearch className="h-4 w-4" /> Check Website Risk
+            </Button>
             <Button className="gap-2 bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]" onClick={() => setIsNewConsentModalOpen(true)}>
                <Plus className="h-4 w-4" /> New Consent
             </Button>
@@ -795,6 +821,105 @@ const ConsentRequests = () => {
               Issue Consent Grant
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Website Risk Analyzer Modal ─────────────────────────────────── */}
+      <Dialog open={isWebsiteAnalyzerOpen} onOpenChange={(o) => { setIsWebsiteAnalyzerOpen(o); if (!o) { setWebsiteAnalysis(null); setWebsiteUrl(''); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanSearch className="h-5 w-5 text-blue-400" />
+              Website Risk Analyzer
+            </DialogTitle>
+            <DialogDescription>
+              Enter any website URL. Our ML service will fetch and analyze it in real-time for data-sharing safety.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex gap-2 mt-2">
+            <Input
+              placeholder="https://example.com"
+              value={websiteUrl}
+              onChange={e => setWebsiteUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && analyzeWebsite()}
+              className="flex-1"
+            />
+            <Button onClick={analyzeWebsite} disabled={websiteAnalysisLoading || !websiteUrl.trim()} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+              {websiteAnalysisLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanSearch className="h-4 w-4" />}
+              {websiteAnalysisLoading ? 'Analyzing...' : 'Analyze'}
+            </Button>
+          </div>
+
+          {websiteAnalysisLoading && (
+            <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+              <p className="text-sm">Fetching and analyzing website...</p>
+              <p className="text-xs opacity-60">Checking privacy policy, security headers, scripts...</p>
+            </div>
+          )}
+
+          {websiteAnalysis && !websiteAnalysis.error && (
+            <div className="flex flex-col gap-4 mt-2">
+              {/* Score card */}
+              <div className={cn(
+                "rounded-xl border p-4 flex items-center gap-4",
+                websiteAnalysis.risk_level === 'high'   && "border-rose-500/40 bg-rose-500/10",
+                websiteAnalysis.risk_level === 'medium' && "border-amber-500/40 bg-amber-500/10",
+                websiteAnalysis.risk_level === 'low'    && "border-emerald-500/40 bg-emerald-500/10",
+              )}>
+                <div className={cn(
+                  "flex h-14 w-14 items-center justify-center rounded-full text-2xl font-bold shrink-0",
+                  websiteAnalysis.risk_level === 'high'   && "bg-rose-500/20 text-rose-400",
+                  websiteAnalysis.risk_level === 'medium' && "bg-amber-500/20 text-amber-400",
+                  websiteAnalysis.risk_level === 'low'    && "bg-emerald-500/20 text-emerald-400",
+                )}>
+                  {websiteAnalysis.score}
+                </div>
+                <div>
+                  <p className="font-semibold text-base capitalize">{websiteAnalysis.risk_level} Risk</p>
+                  <p className="text-xs text-muted-foreground break-all">{websiteAnalysis.domain}</p>
+                  {!websiteAnalysis.fetch_success && (
+                    <p className="text-xs text-amber-400 mt-1">⚠️ Could not fully reach site — partial analysis</p>
+                  )}
+                </div>
+                <div className="ml-auto">
+                  {websiteAnalysis.risk_level === 'high'   && <AlertTriangle className="h-8 w-8 text-rose-400" />}
+                  {websiteAnalysis.risk_level === 'medium' && <AlertCircle className="h-8 w-8 text-amber-400" />}
+                  {websiteAnalysis.risk_level === 'low'    && <ShieldCheck className="h-8 w-8 text-emerald-400" />}
+                </div>
+              </div>
+
+              {/* Verdict */}
+              <div className={cn(
+                "rounded-lg px-4 py-2 text-sm font-medium text-center",
+                websiteAnalysis.risk_level === 'high'   && "bg-rose-500/10 text-rose-300",
+                websiteAnalysis.risk_level === 'medium' && "bg-amber-500/10 text-amber-300",
+                websiteAnalysis.risk_level === 'low'    && "bg-emerald-500/10 text-emerald-300",
+              )}>
+                {websiteAnalysis.risk_level === 'high'   && "🔴 Not recommended — avoid sharing personal data with this site"}
+                {websiteAnalysis.risk_level === 'medium' && "🟡 Proceed with caution — review the findings before sharing data"}
+                {websiteAnalysis.risk_level === 'low'    && "🟢 Looks safe — site meets basic data-sharing safety standards"}
+              </div>
+
+              {/* Factors */}
+              <div className="flex flex-col gap-1.5 max-h-52 overflow-y-auto pr-1">
+                {websiteAnalysis.factors?.map((f, i) => (
+                  <div key={i} className="text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2">{f}</div>
+                ))}
+              </div>
+
+              <a href={websiteAnalysis.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                <ExternalLink className="h-3 w-3" /> Visit {websiteAnalysis.domain}
+              </a>
+            </div>
+          )}
+
+          {websiteAnalysis?.error && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400 mt-2">
+              {websiteAnalysis.error}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

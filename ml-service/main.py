@@ -11,6 +11,8 @@ from typing import Optional
 import os, json, math, re, logging
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
+import httpx
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ml-service")
@@ -316,6 +318,138 @@ def score_consent(req: ConsentScoreRequest):
         return ml_result
     # Fall back to rule-based
     return rule_based_score(req)
+
+
+# ---------------------------------------------------------------------------
+# Website Risk Analyzer — real HTTP fetch + signal detection
+# ---------------------------------------------------------------------------
+
+SUSPICIOUS_TLDS = ['.tk', '.ml', '.ga', '.cf', '.xyz', '.top', '.click', '.download', '.zip', '.review', '.country']
+SUSPICIOUS_SCRIPTS = ['coinhive', 'cryptonight', 'eval(atob', 'document.write(unescape', 'cryptoloot', 'minero.cc']
+
+class WebsiteAnalysisRequest(BaseModel):
+    url: str
+
+@app.post("/analyze-website")
+async def analyze_website(req: WebsiteAnalysisRequest):
+    """Fetch and analyze a real website for data-sharing risk signals."""
+    url = req.url.strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    parsed = urlparse(url)
+    domain = parsed.netloc.lower()
+    score = 0
+    factors = []
+
+    # ── Signal 1: HTTPS ──────────────────────────────────────────────────────
+    if parsed.scheme != 'https':
+        score += 30
+        factors.append("🔓 Site uses HTTP — data transmitted unencrypted")
+    else:
+        factors.append("✅ Site uses HTTPS — encrypted connection")
+
+    # ── Signal 2: Suspicious TLD ─────────────────────────────────────────────
+    if any(domain.endswith(tld) for tld in SUSPICIOUS_TLDS):
+        score += 20
+        factors.append("⚠️ Suspicious domain extension — commonly used for phishing/spam")
+
+    # ── Fetch the website ────────────────────────────────────────────────────
+    html = ''
+    resp_headers = {}
+    fetch_failed = False
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, verify=False) as client:
+            resp = await client.get(url, headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; ZeroShare-RiskBot/1.0)'
+            })
+        html = resp.text.lower()
+        resp_headers = {k.lower(): v for k, v in resp.headers.items()}
+        logger.info(f"✅ Fetched {url} — {len(html)} chars, status {resp.status_code}")
+    except httpx.TimeoutException:
+        score += 20
+        factors.append("⚠️ Website timed out — server not responding reliably")
+        fetch_failed = True
+    except Exception as e:
+        score += 10
+        factors.append(f"⚠️ Could not connect to website: unreachable or invalid URL")
+        fetch_failed = True
+
+    if not fetch_failed:
+        # ── Signal 3: Privacy Policy ─────────────────────────────────────────
+        if re.search(r'privacy[\s\-_]?policy|privacy[\s\-_]?notice|datenschutz', html):
+            factors.append("✅ Privacy policy detected — required by GDPR/DPDPA")
+        else:
+            score += 25
+            factors.append("🔴 No privacy policy found — legally required; HIGH risk for data sharing")
+
+        # ── Signal 4: Terms of Service ───────────────────────────────────────
+        if re.search(r'terms\s+of\s+(service|use)|terms\s+and\s+conditions|terms\s*&amp;\s*conditions', html):
+            factors.append("✅ Terms of service found")
+        else:
+            score += 10
+            factors.append("⚠️ No terms of service found — unclear legal obligations")
+
+        # ── Signal 5: Contact Information ────────────────────────────────────
+        if re.search(r'contact[\s\-]?us|support@|info@|help@|mailto:', html):
+            factors.append("✅ Contact information found — accountable organisation")
+        else:
+            score += 5
+            factors.append("⚠️ No contact information found — difficult to reach if issues arise")
+
+        # ── Signal 6: Cookie Consent / GDPR ──────────────────────────────────
+        if re.search(r'cookie\s*consent|accept\s*cookie|gdpr|we use cookies|cookie\s*policy', html):
+            factors.append("✅ Cookie consent / GDPR compliance mechanism detected")
+        else:
+            score += 5
+            factors.append("⚠️ No cookie consent detected — possible GDPR non-compliance")
+
+        # ── Signal 7: Suspicious Scripts ─────────────────────────────────────
+        if any(p in html for p in SUSPICIOUS_SCRIPTS):
+            score += 30
+            factors.append("🔴 Suspicious scripts detected — possible cryptominer or malware")
+        else:
+            factors.append("✅ No known malicious scripts detected")
+
+        # ── Signal 8: Security Headers ───────────────────────────────────────
+        missing_headers = []
+        if 'x-frame-options' not in resp_headers:
+            missing_headers.append('X-Frame-Options')
+            score += 3
+        if 'content-security-policy' not in resp_headers:
+            missing_headers.append('CSP')
+            score += 3
+        if 'x-content-type-options' not in resp_headers:
+            missing_headers.append('X-Content-Type-Options')
+            score += 2
+
+        if missing_headers:
+            factors.append(f"⚠️ Missing security headers: {', '.join(missing_headers)}")
+        else:
+            factors.append("✅ All key security headers present")
+
+        # ── Signal 9: Login / Data Collection ────────────────────────────────
+        if re.search(r'<input[^>]+type=["\']password["\']|sign[\s\-]?in|log[\s\-]?in', html):
+            factors.append("ℹ️ Site collects credentials — ensure you trust this organisation")
+
+    score = min(score, 100)
+
+    if score >= 60:
+        risk_level = "high"
+    elif score >= 30:
+        risk_level = "medium"
+    else:
+        risk_level = "low"
+
+    return {
+        "score": score,
+        "risk_level": risk_level,
+        "url": url,
+        "domain": domain,
+        "factors": factors,
+        "fetch_success": not fetch_failed,
+    }
 
 
 # ---------------------------------------------------------------------------

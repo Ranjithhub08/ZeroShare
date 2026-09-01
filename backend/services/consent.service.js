@@ -159,6 +159,39 @@ class ConsentService {
     return res.rows.length;
   }
 
+  // Feature 8 — Consent Expiry Alerts: warn users 7 days and 1 day before expiry
+  async warnExpiringConsents() {
+    // Find consents expiring in 1 day or 7 days (and not already warned for that window)
+    const res = await db.query(`
+      SELECT c.id, c.user_id, c.app_name, c.data_type, c.expires_at, c.reminder_sent,
+             u.name, u.email,
+             EXTRACT(DAY FROM (c.expires_at - NOW())) AS days_left
+      FROM consents c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.status = 'GRANTED'
+        AND c.expires_at IS NOT NULL
+        AND c.expires_at > NOW()
+        AND c.expires_at <= NOW() + INTERVAL '7 days'
+        AND c.reminder_sent = FALSE
+    `);
+    let warned = 0;
+    for (const c of res.rows) {
+      const daysLeft = Math.ceil(parseFloat(c.days_left));
+      if (daysLeft > 7) continue;
+      // Send in-app notification
+      await notifService.create(c.user_id, '⚠️ Consent Expiring Soon',
+        `Your consent for "${c.app_name}" (${c.data_type}) expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}. Log in to renew or revoke.`
+      );
+      // Send email
+      sendEmail({ to: c.email, ...templates.consentExpiryWarning(c.name, c.app_name, c.data_type, daysLeft, c.expires_at) })
+        .catch(err => console.error('[Email] Expiry warning failed:', err.message));
+      // Mark reminder_sent so we don't spam
+      await db.query(`UPDATE consents SET reminder_sent = TRUE WHERE id = $1`, [c.id]);
+      warned++;
+    }
+    return warned;
+  }
+
   // Feature 3 — Consent Risk Trend: which requesters get denied most
   async getRiskTrends() {
     const res = await db.query(`

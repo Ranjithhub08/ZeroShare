@@ -125,6 +125,20 @@ const templates = {
         <p style="font-size:12px;color:#52525b">ZeroShare — Your data, your rules.</p>
       </div>`
   }),
+  consentExpiryWarning: (name, appName, dataType, daysLeft, expiresAt) => ({
+    subject: `⚠️ Consent Expiring Soon — ${appName} (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px;margin:auto;background:#0f0f12;color:#e4e4e7;padding:32px;border-radius:12px;">
+        <h2 style="color:#a855f7">ZeroShare</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Your consent for <strong>${appName}</strong> to access your <strong>${dataType}</strong> will expire in <span style="color:#fbbf24;font-weight:bold;">${daysLeft} day${daysLeft === 1 ? '' : 's'}</span> on <strong>${new Date(expiresAt).toLocaleDateString()}</strong>.</p>
+        <div style="margin:20px 0;padding:16px;background:#1c1917;border-left:4px solid #fbbf24;border-radius:6px;">
+          <p style="margin:0;font-size:14px;color:#d4d4d8;">Log in to ZeroShare to <strong>renew</strong> or <strong>revoke</strong> this consent before it auto-expires.</p>
+        </div>
+        <hr style="border-color:#27272a;margin:24px 0"/>
+        <p style="font-size:12px;color:#52525b">ZeroShare — Your data, your rules.</p>
+      </div>`
+  }),
   consentExpired: (name, appName, dataType) => ({
     subject: `⏰ Consent Expired — ${appName}`,
     html: `

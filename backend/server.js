@@ -131,6 +131,20 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
+// Feature 8 — Consent Expiry Warning job — runs every 12 hours
+setInterval(async () => {
+  try {
+    const warned = await consentService.warnExpiringConsents();
+    if (warned > 0) console.log(`[Expiry Warning] Sent ${warned} expiry warning(s).`);
+  } catch (err) {
+    console.error('[Expiry Warning] Error:', err.message);
+  }
+}, 12 * 60 * 60 * 1000);
+// Run once at startup after 10s
+setTimeout(async () => {
+  try { await consentService.warnExpiringConsents(); } catch {}
+}, 10 * 1000);
+
 // ML Nightly Retrain job — runs every 24 hours, trains on real admin decisions
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
 const retrainML = async () => {

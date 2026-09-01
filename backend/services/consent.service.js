@@ -158,6 +158,60 @@ class ConsentService {
     }
     return res.rows.length;
   }
+
+  // Feature 3 — Consent Risk Trend: which requesters get denied most
+  async getRiskTrends() {
+    const res = await db.query(`
+      SELECT
+        app_name,
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status IN ('DENIED','REVOKED')) AS denied,
+        ROUND(COUNT(*) FILTER (WHERE status IN ('DENIED','REVOKED')) * 100.0 / COUNT(*)) AS denial_rate,
+        MAX(risk_level) AS max_risk,
+        AVG(risk_score) AS avg_score
+      FROM consents
+      GROUP BY app_name
+      HAVING COUNT(*) >= 2
+      ORDER BY denial_rate DESC, total DESC
+      LIMIT 20
+    `);
+    return res.rows;
+  }
+
+  // Feature 4 — Anomaly Detection: has this app changed what data it requests?
+  async detectAnomaly(appName, dataType) {
+    if (!appName) return null;
+    const res = await db.query(
+      `SELECT DISTINCT data_type FROM consents WHERE app_name ILIKE $1`,
+      [appName]
+    );
+    const previousTypes = res.rows.map(r => r.data_type.toLowerCase());
+    if (previousTypes.length === 0) return null; // first time, no history
+
+    const currentType = dataType.toLowerCase();
+    const isNew = !previousTypes.some(t => t.includes(currentType) || currentType.includes(t));
+
+    // Classify sensitivity
+    const HIGH_RISK = ['passport', 'medical', 'biometric', 'ssn', 'bank', 'credit card', 'aadhaar'];
+    const isHighRisk = HIGH_RISK.some(k => currentType.includes(k));
+
+    if (isNew && isHighRisk) {
+      return {
+        anomaly: true,
+        severity: 'high',
+        message: `⚠️ ANOMALY: "${appName}" previously requested [${previousTypes.join(', ')}] but is now requesting "${dataType}" — this is a sensitive new data type. Verify this is expected.`,
+        previousTypes,
+      };
+    } else if (isNew) {
+      return {
+        anomaly: true,
+        severity: 'medium',
+        message: `ℹ️ "${appName}" has not requested "${dataType}" before. Previously requested: [${previousTypes.join(', ')}].`,
+        previousTypes,
+      };
+    }
+    return { anomaly: false, previousTypes };
+  }
 }
 
 module.exports = new ConsentService();

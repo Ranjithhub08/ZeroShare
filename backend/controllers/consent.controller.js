@@ -11,8 +11,10 @@ exports.createConsent = async (req, res) => {
     if (isWebsite && !requester_url) {
       return res.status(400).json({ success: false, error: 'requester_url is required for website type' });
     }
+    // Feature 4 — Anomaly detection: check if app is requesting new data type
+    const anomaly = await consentService.detectAnomaly(app_name || requester_url, data_type);
     const result = await consentService.createConsent(req.userId, { app_name, data_type, purpose, duration, requester_type, requester_url });
-    res.status(201).json({ success: true, data: result });
+    res.status(201).json({ success: true, data: result, anomaly: anomaly || null });
   } catch (err) {
     console.error('createConsent error:', err);
     res.status(500).json({ success: false, error: 'Failed to create consent' });

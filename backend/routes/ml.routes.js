@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const http = require('http');
 const protect = require('../middleware/auth.middleware');
+const consentService = require('../services/consent.service');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
 
@@ -44,6 +45,50 @@ router.post('/analyze-website', protect, async (req, res) => {
     res.json(result);
   } catch (err) {
     res.json({ score: 0, risk_level: 'unknown', factors: ['Website analysis unavailable — ML service offline'], fetch_success: false });
+  }
+});
+
+// POST /api/ml/check-breach — Feature 1: data breach check
+router.post('/check-breach', protect, async (req, res) => {
+  try {
+    const result = await proxyToML('/check-breach', req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(503).json({ error: 'ML service offline' });
+  }
+});
+
+// POST /api/ml/check-phishing — Feature 2: phishing URL detector
+router.post('/check-phishing', protect, async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'url is required' });
+    const result = await proxyToML('/check-phishing', { url });
+    res.json(result);
+  } catch (err) {
+    res.status(503).json({ error: 'ML service offline' });
+  }
+});
+
+// GET /api/ml/risk-trends — Feature 3: which requesters get denied most
+router.get('/risk-trends', protect, async (req, res) => {
+  try {
+    const trends = await consentService.getRiskTrends();
+    res.json({ success: true, data: trends });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch risk trends' });
+  }
+});
+
+// GET /api/ml/anomaly — Feature 4: detect anomaly for a given app + data_type
+router.get('/anomaly', protect, async (req, res) => {
+  try {
+    const { app_name, data_type } = req.query;
+    if (!app_name || !data_type) return res.status(400).json({ error: 'app_name and data_type required' });
+    const result = await consentService.detectAnomaly(app_name, data_type);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to check anomaly' });
   }
 });
 

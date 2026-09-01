@@ -60,6 +60,29 @@ const ConsentRequests = () => {
     duration: '30 Days'
   });
 
+  // Anomaly warning (shown after consent created)
+  const [anomalyWarning, setAnomalyWarning] = useState(null);
+
+  // Data Breach Checker
+  const [isBreachCheckerOpen, setIsBreachCheckerOpen] = useState(false);
+  const [breachEmail, setBreachEmail] = useState('');
+  const [breachPassword, setBreachPassword] = useState('');
+  const [breachResult, setBreachResult] = useState(null);
+  const [breachLoading, setBreachLoading] = useState(false);
+
+  const checkBreach = async () => {
+    if (!breachEmail && !breachPassword) return;
+    setBreachLoading(true); setBreachResult(null);
+    try {
+      const res = await api.post('/ml/check-breach', {
+        email: breachEmail || undefined,
+        password: breachPassword || undefined,
+      });
+      setBreachResult(res.data);
+    } catch { setBreachResult({ error: 'Breach check unavailable — ML service offline' }); }
+    finally { setBreachLoading(false); }
+  };
+
   // Website Risk Analyzer
   const [isWebsiteAnalyzerOpen, setIsWebsiteAnalyzerOpen] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -400,11 +423,16 @@ const ConsentRequests = () => {
     if (!newConsentData.data_type || !newConsentData.purpose) return;
     setLoading(true);
     try {
-      await api.post('/consents', newConsentData);
+      const res = await api.post('/consents', newConsentData);
       setIsNewConsentModalOpen(false);
       setNewConsentData({ requester_type: 'app', app_name: '', requester_url: '', data_type: '', purpose: '', duration: '30 Days' });
       setMlPreview(null);
       fetchConsents();
+      // Feature 4: show anomaly warning if detected
+      if (res.data?.anomaly?.anomaly) {
+        setAnomalyWarning(res.data.anomaly);
+        setTimeout(() => setAnomalyWarning(null), 12000);
+      }
     } catch (err) {
       console.error('Failed to create consent', err);
     } finally {
@@ -466,6 +494,9 @@ const ConsentRequests = () => {
             <Button variant="outline" className="gap-2 bg-card" onClick={downloadCSV}>
                <Download className="h-4 w-4" /> Export CSV
             </Button>
+            <Button variant="outline" className="gap-2 bg-card border-rose-500/30 text-rose-400 hover:bg-rose-500/10" onClick={() => { setIsBreachCheckerOpen(true); setBreachResult(null); setBreachEmail(''); setBreachPassword(''); }}>
+               <ShieldOff className="h-4 w-4" /> Breach Check
+            </Button>
             <Button variant="outline" className="gap-2 bg-card border-blue-500/30 text-blue-400 hover:bg-blue-500/10" onClick={() => { setIsWebsiteAnalyzerOpen(true); setWebsiteAnalysis(null); setWebsiteUrl(''); }}>
                <ScanSearch className="h-4 w-4" /> Check Website Risk
             </Button>
@@ -474,6 +505,21 @@ const ConsentRequests = () => {
             </Button>
           </div>
         </header>
+
+        {/* Feature 4 — Anomaly Warning Banner */}
+        {anomalyWarning && (
+          <div className={cn(
+            "rounded-xl border px-4 py-3 flex items-start gap-3",
+            anomalyWarning.severity === 'high' ? "border-rose-500/40 bg-rose-500/10" : "border-amber-500/40 bg-amber-500/10"
+          )}>
+            <AlertTriangle className={cn("h-5 w-5 mt-0.5 shrink-0", anomalyWarning.severity === 'high' ? "text-rose-400" : "text-amber-400")} />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Anomaly Detected</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{anomalyWarning.message}</p>
+            </div>
+            <button onClick={() => setAnomalyWarning(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <Card className="lg:col-span-3 flex flex-col border p-0 bg-card overflow-hidden shadow-xl">
@@ -821,6 +867,68 @@ const ConsentRequests = () => {
               Issue Consent Grant
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Data Breach Checker Modal ────────────────────────────────────── */}
+      <Dialog open={isBreachCheckerOpen} onOpenChange={(o) => { setIsBreachCheckerOpen(o); if (!o) { setBreachResult(null); setBreachEmail(''); setBreachPassword(''); }}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldOff className="h-5 w-5 text-rose-400" />
+              Data Breach Checker
+            </DialogTitle>
+            <DialogDescription>
+              Check if your email or password has appeared in real data breaches. Password is never sent — only a partial hash (k-anonymity).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 mt-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Email address</label>
+              <Input placeholder="you@example.com" value={breachEmail} onChange={e => setBreachEmail(e.target.value)} type="email" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Password (optional — checked anonymously)</label>
+              <Input placeholder="Enter a password to check" value={breachPassword} onChange={e => setBreachPassword(e.target.value)} type="password" />
+            </div>
+            <Button onClick={checkBreach} disabled={breachLoading || (!breachEmail && !breachPassword)} className="gap-2 bg-rose-600 hover:bg-rose-700 text-white">
+              {breachLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
+              {breachLoading ? 'Checking breaches...' : 'Check Now'}
+            </Button>
+          </div>
+
+          {breachResult && (
+            <div className="flex flex-col gap-3 mt-2">
+              {/* Password result */}
+              {breachResult.password && (
+                <div className={cn("rounded-lg border p-3", breachResult.password.breached ? "border-rose-500/40 bg-rose-500/10" : "border-emerald-500/40 bg-emerald-500/10")}>
+                  <p className="text-sm font-medium mb-1">Password Check</p>
+                  <p className="text-xs text-muted-foreground">{breachResult.password.message}</p>
+                  {breachResult.password.recommendation && <p className="text-xs text-amber-400 mt-1">💡 {breachResult.password.recommendation}</p>}
+                </div>
+              )}
+              {/* Email result */}
+              {breachResult.email && (
+                <div className={cn("rounded-lg border p-3", breachResult.email.breached ? "border-rose-500/40 bg-rose-500/10" : breachResult.email.breached === false ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10")}>
+                  <p className="text-sm font-medium mb-1">Email Breach Check</p>
+                  <p className="text-xs text-muted-foreground">{breachResult.email.message}</p>
+                  {breachResult.email.check_url && (
+                    <a href={breachResult.email.check_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1 mt-2">
+                      <ExternalLink className="h-3 w-3" /> {breachResult.email.action}
+                    </a>
+                  )}
+                  {breachResult.email.breaches?.map((b, i) => (
+                    <div key={i} className="mt-2 border border-rose-500/20 rounded p-2">
+                      <p className="text-xs font-medium text-rose-400">{b.name} — {b.date}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Data leaked: {b.data_leaked?.join(', ')}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {breachResult.error && <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-400">{breachResult.error}</div>}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

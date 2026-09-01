@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-import os, json, math, re, logging
+import os, json, math, re, logging, hashlib
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -545,6 +545,210 @@ async def analyze_website(req: WebsiteAnalysisRequest):
         "domain": domain,
         "factors": factors,
         "fetch_success": not fetch_failed,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Feature 1 — Data Breach Checker (HIBP free API)
+# ---------------------------------------------------------------------------
+
+class BreachCheckRequest(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+@app.post("/check-breach")
+async def check_breach(req: BreachCheckRequest):
+    """Check email/password against real breach databases. Password uses k-anonymity (never sent in full)."""
+    results = {}
+
+    # ── Password check (HIBP Range API — free, k-anonymity, password never sent) ──
+    if req.password:
+        try:
+            sha1 = hashlib.sha1(req.password.encode('utf-8')).hexdigest().upper()
+            prefix, suffix = sha1[:5], sha1[5:]
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    f"https://api.pwnedpasswords.com/range/{prefix}",
+                    headers={"Add-Padding": "true"}
+                )
+            count = 0
+            for line in resp.text.splitlines():
+                h, c = line.strip().split(':')
+                if h == suffix:
+                    count = int(c)
+                    break
+            if count > 0:
+                results['password'] = {
+                    'breached': True,
+                    'count': count,
+                    'severity': 'critical' if count > 10000 else 'high' if count > 100 else 'medium',
+                    'message': f"⚠️ This password appeared in {count:,} real data breaches. Change it immediately on every site you use it!",
+                    'recommendation': "Use a unique password with 12+ characters, numbers and symbols."
+                }
+            else:
+                results['password'] = {
+                    'breached': False,
+                    'message': "✅ Password not found in any known breach database.",
+                }
+        except Exception as e:
+            results['password'] = {'error': f'Could not check password: {str(e)}'}
+
+    # ── Email check (HIBP v3 — needs API key, or guide user to check manually) ──
+    if req.email:
+        api_key = os.getenv('HIBP_API_KEY', '')
+        if api_key:
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    resp = await client.get(
+                        f"https://haveibeenpwned.com/api/v3/breachedaccount/{req.email}?truncateResponse=false",
+                        headers={'hibp-api-key': api_key, 'user-agent': 'ZeroShare-RiskPlatform/1.0'}
+                    )
+                if resp.status_code == 200:
+                    breaches = resp.json()
+                    results['email'] = {
+                        'breached': True,
+                        'count': len(breaches),
+                        'message': f"🔴 Email found in {len(breaches)} data breach(es)!",
+                        'breaches': [
+                            {
+                                'name': b['Name'],
+                                'date': b['BreachDate'],
+                                'data_leaked': b.get('DataClasses', [])[:5],
+                                'description': re.sub('<[^<]+?>', '', b.get('Description', ''))[:120]
+                            } for b in breaches[:5]
+                        ]
+                    }
+                elif resp.status_code == 404:
+                    results['email'] = {'breached': False, 'message': "✅ Email not found in any known breach."}
+                else:
+                    results['email'] = {'error': f'HIBP API error: {resp.status_code}'}
+            except Exception as e:
+                results['email'] = {'error': str(e)}
+        else:
+            # No API key — still give useful result with direct link
+            results['email'] = {
+                'breached': None,
+                'message': "ℹ️ Add HIBP_API_KEY to ml-service env for automated email breach check.",
+                'check_url': f"https://haveibeenpwned.com/account/{req.email}",
+                'action': f"Click to manually check {req.email} on HaveIBeenPwned →"
+            }
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Feature 2 — Phishing URL Detector
+# ---------------------------------------------------------------------------
+
+MAJOR_BRANDS = {
+    'google': 'google.com', 'facebook': 'facebook.com', 'amazon': 'amazon.com',
+    'paypal': 'paypal.com', 'microsoft': 'microsoft.com', 'apple': 'apple.com',
+    'netflix': 'netflix.com', 'instagram': 'instagram.com', 'twitter': 'twitter.com',
+    'linkedin': 'linkedin.com', 'github': 'github.com', 'yahoo': 'yahoo.com',
+    'dropbox': 'dropbox.com', 'spotify': 'spotify.com', 'uber': 'uber.com',
+    'airbnb': 'airbnb.com', 'whatsapp': 'whatsapp.com', 'zoom': 'zoom.us',
+}
+
+HOMOGLYPHS = {'0': 'o', '1': 'l', '3': 'e', '4': 'a', '5': 's', '@': 'a', 'vv': 'w'}
+
+class PhishingCheckRequest(BaseModel):
+    url: str
+
+@app.post("/check-phishing")
+def check_phishing(req: PhishingCheckRequest):
+    """Detect phishing / lookalike domains before user shares credentials."""
+    url = req.url.strip()
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    parsed = urlparse(url)
+    raw_domain = parsed.netloc.lower()
+    domain = re.sub(r'^www\.', '', raw_domain)
+    domain_root = domain.split('.')[0] if '.' in domain else domain
+
+    score = 0
+    warnings = []
+    safe_signals = []
+
+    # ── IP address as domain ──────────────────────────────────────────────────
+    if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', raw_domain):
+        score += 60
+        warnings.append("🔴 URL uses an IP address instead of a domain name — strong phishing indicator. Legitimate sites use domain names.")
+
+    # ── Exact known safe domain ───────────────────────────────────────────────
+    is_official = any(domain == legit or domain.endswith('.' + legit) for legit in MAJOR_BRANDS.values())
+    if is_official:
+        safe_signals.append("✅ Domain matches a verified official brand domain")
+
+    if not is_official:
+        # ── Brand name in domain but not official ─────────────────────────────
+        for brand, official in MAJOR_BRANDS.items():
+            if brand in domain and domain != official and not domain.endswith('.' + official):
+                score += 35
+                warnings.append(f"⚠️ Domain contains '{brand}' but is NOT {official} — possible impersonation of {brand.capitalize()}")
+                break
+
+        # ── Homoglyph / number substitution ──────────────────────────────────
+        normalized = domain_root
+        for digit, letter in HOMOGLYPHS.items():
+            normalized = normalized.replace(digit, letter)
+        for brand in MAJOR_BRANDS:
+            if normalized == brand and domain_root != brand:
+                score += 55
+                warnings.append(f"🎭 HOMOGLYPH ATTACK: '{domain_root}' looks like '{brand}' using character substitution — classic phishing tactic")
+                break
+
+        # ── Extra hyphens around brand name ───────────────────────────────────
+        for brand in MAJOR_BRANDS:
+            if f"-{brand}" in domain or f"{brand}-" in domain:
+                score += 30
+                warnings.append(f"⚠️ Hyphenated brand name '{domain}' — official sites never use hyphens around their brand name")
+                break
+
+        # ── Too many subdomains ────────────────────────────────────────────────
+        parts = domain.split('.')
+        if len(parts) > 3:
+            score += 20
+            warnings.append(f"⚠️ Unusually deep subdomain ({'.'.join(parts[:-2])}.<brand>.com pattern) — phishing sites hide behind real-looking subdomains")
+
+        # ── Suspicious keywords in URL ─────────────────────────────────────────
+        phish_keywords = ['login', 'signin', 'verify', 'secure', 'account', 'update', 'confirm', 'banking', 'wallet']
+        found_keywords = [k for k in phish_keywords if k in domain]
+        if found_keywords:
+            score += 10 * len(found_keywords)
+            warnings.append(f"⚠️ Suspicious keywords in domain: {', '.join(found_keywords)} — phishing sites use urgency words to trick users")
+
+        # ── HTTP (no SSL) ──────────────────────────────────────────────────────
+        if parsed.scheme == 'http':
+            score += 20
+            warnings.append("🔓 No HTTPS — any data you enter (passwords, emails) is transmitted unencrypted")
+
+        # ── Suspicious TLD ─────────────────────────────────────────────────────
+        if any(domain.endswith(tld) for tld in SUSPICIOUS_TLDS):
+            score += 15
+            warnings.append("⚠️ Suspicious domain extension — frequently used in phishing campaigns")
+
+    if not warnings:
+        safe_signals.append("✅ No phishing patterns detected in URL structure")
+
+    score = min(score, 100)
+    if score >= 60:
+        risk_level = "high"
+        verdict = "🔴 HIGH PHISHING RISK — Do NOT enter passwords or personal data on this site"
+    elif score >= 30:
+        risk_level = "medium"
+        verdict = "🟡 SUSPICIOUS URL — Verify this is the official site before entering any data"
+    else:
+        risk_level = "low"
+        verdict = "🟢 URL appears legitimate — no major phishing patterns detected"
+
+    return {
+        "score": score,
+        "risk_level": risk_level,
+        "verdict": verdict,
+        "domain": raw_domain,
+        "warnings": warnings,
+        "safe_signals": safe_signals,
     }
 
 

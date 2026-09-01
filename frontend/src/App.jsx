@@ -26,6 +26,9 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminConsents from './pages/admin/AdminConsents';
 import AdminUsers from './pages/AdminUsers';
 import AdminML from './pages/admin/AdminML';
+import AdminThreat from './pages/admin/AdminThreat';
+import AdminActivity from './pages/admin/AdminActivity';
+import AdminReport from './pages/admin/AdminReport';
 
 // Route guards
 const UserRoute = ({ children }) => {
@@ -67,13 +70,15 @@ function AppRoutes() {
         {/* ── ADMIN PORTAL ── */}
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard"     element={<AdminDashboard />} />
-          <Route path="consents"      element={<AdminConsents />} />
-          <Route path="users"         element={<AdminUsers />} />
-          <Route path="ml"            element={<AdminML />} />
-          <Route path="audit"         element={<AuditLogs />} />
-          <Route path="settings"      element={<Settings />} />
-          <Route path="notifications" element={<AdminDashboard />} />
+          <Route path="dashboard"  element={<AdminDashboard />} />
+          <Route path="consents"   element={<AdminConsents />} />
+          <Route path="threats"    element={<AdminThreat />} />
+          <Route path="activity"   element={<AdminActivity />} />
+          <Route path="users"      element={<AdminUsers />} />
+          <Route path="ml"         element={<AdminML />} />
+          <Route path="reports"    element={<AdminReport />} />
+          <Route path="audit"      element={<AuditLogs />} />
+          <Route path="settings"   element={<Settings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

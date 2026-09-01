@@ -17,10 +17,11 @@ const AdminSidebar = () => {
   const links = [
     { name: 'Admin Overview',   path: '/admin/dashboard',  icon: LayoutDashboard },
     { name: 'All Consents',     path: '/admin/consents',   icon: FileCheck },
+    { name: 'Threat Dashboard', path: '/admin/threats',    icon: Bell },
+    { name: 'Live Activity',    path: '/admin/activity',   icon: Activity },
     { name: 'User Management',  path: '/admin/users',      icon: Users },
     { name: 'ML Analytics',     path: '/admin/ml',         icon: BrainCircuit },
-    { name: 'Audit Trail',      path: '/admin/audit',      icon: Activity },
-    { name: 'Notifications',    path: '/admin/notifications', icon: Bell },
+    { name: 'Reports & GDPR',   path: '/admin/reports',    icon: BarChart3 },
   ];
 
   const bottomLinks = [

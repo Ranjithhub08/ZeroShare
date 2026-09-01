@@ -102,6 +102,7 @@ const dataRoutes = require('./routes/data.routes');
 const searchRoutes = require('./routes/search.routes');
 const userRoutes = require('./routes/user.routes');
 const mlRoutes = require('./routes/ml.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 // Route Mounting
 app.use('/api/auth', authRoutes);
@@ -114,6 +115,7 @@ app.use('/api/data', dataRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/ml', mlRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

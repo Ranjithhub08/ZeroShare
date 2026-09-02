@@ -4,7 +4,7 @@ const { sendEmail, templates } = require('./email.service');
 const http = require('http');
 
 // Call ML risk scoring microservice (non-blocking — falls back gracefully)
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
 async function mlScore(payload) {
   return new Promise((resolve) => {

@@ -869,8 +869,11 @@ const ConsentRequests = () => {
               <Input
                 value={newConsentData.purpose}
                 onChange={e => setNewConsentData(p => ({ ...p, purpose: e.target.value }))}
-                placeholder="e.g., Legal compliance verification"
+                placeholder="e.g., Legal compliance verification (min 5 chars)"
               />
+              {newConsentData.purpose.length > 0 && newConsentData.purpose.length < 5 && (
+                <p className="text-xs text-rose-400">Purpose must be at least 5 characters.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Access Duration</label>
@@ -960,7 +963,8 @@ const ConsentRequests = () => {
               onClick={handleCreateConsent}
               disabled={
                 submitLoading ||
-                !newConsentData.data_type || !newConsentData.purpose ||
+                !newConsentData.data_type ||
+                !newConsentData.purpose || newConsentData.purpose.length < 5 ||
                 (newConsentData.requester_type === 'app' ? !newConsentData.app_name : !newConsentData.requester_url)
               }
             >

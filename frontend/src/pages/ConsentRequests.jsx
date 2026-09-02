@@ -871,11 +871,19 @@ const ConsentRequests = () => {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Access Duration</label>
-              <Input
+              <select
                 value={newConsentData.duration}
                 onChange={e => setNewConsentData(p => ({ ...p, duration: e.target.value }))}
-                placeholder="e.g., 30 Days"
-              />
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="7 Days">7 Days</option>
+                <option value="14 Days">14 Days</option>
+                <option value="30 Days">30 Days</option>
+                <option value="60 Days">60 Days</option>
+                <option value="90 Days">90 Days</option>
+                <option value="180 Days">180 Days</option>
+                <option value="1 Year">1 Year</option>
+              </select>
               {/* Feature 5 — Duration Suggestion */}
               {durationSuggestion && durationSuggestion.suggested_duration !== newConsentData.duration && (
                 <button

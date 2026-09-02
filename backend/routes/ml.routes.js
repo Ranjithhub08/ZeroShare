@@ -5,7 +5,7 @@ const protect = require('../middleware/auth.middleware');
 const consentService = require('../services/consent.service');
 const db = require('../database/db');
 
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
 function proxyToML(path, reqBody) {
   return new Promise((resolve, reject) => {

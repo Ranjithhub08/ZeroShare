@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars -- used in JSX member expressions (motion.div etc)
 import {
   Card,
@@ -31,6 +32,7 @@ import { useAuth } from '@/context/AuthContext';
 
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -192,7 +194,7 @@ const Dashboard = () => {
             Export Audit
           </Button>
           {!isAdmin && (
-            <Button className="bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] group">
+            <Button onClick={() => navigate('/consents')} className="bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] group">
               New Consent <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           )}

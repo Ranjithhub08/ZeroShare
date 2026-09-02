@@ -17,7 +17,7 @@ const Sidebar = () => {
   const links = [
     { name: 'My Dashboard',    path: '/dashboard',       icon: LayoutDashboard },
     { name: 'Data Vault',      path: '/vault',           icon: Shield },
-    { name: 'My Requests',     path: '/consents',        icon: FileCheck },
+    { name: 'Consent Hub',      path: '/consents',        icon: FileCheck },
     { name: 'Notifications',   path: '/notifications',   icon: Bell },
     { name: 'Trusted Apps',    path: '/trusted-apps',    icon: ShieldCheck },
     { name: 'Audit Trail',     path: '/audit',           icon: Activity },

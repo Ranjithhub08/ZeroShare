@@ -1011,3 +1011,7 @@ def check_minimization(req: MinimizationRequest):
 def startup():
     load_ml_model()
     logger.info("🚀 ZeroShare ML Risk Scorer started")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

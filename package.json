@@ -1,0 +1,13 @@
+{
+  "name": "zeroshare",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "concurrently --names \"ML,BACKEND,FRONTEND\" --prefix-colors \"cyan,green,magenta\" \"npm run ml\" \"npm run backend\" \"npm run frontend\"",
+    "ml": "cd ml-service && python3 main.py",
+    "backend": "cd backend && node server.js",
+    "frontend": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

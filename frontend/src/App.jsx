@@ -32,7 +32,6 @@ import AdminReport from './pages/admin/AdminReport';
 import AdminPending from './pages/admin/AdminPending';
 import AdminActionLog from './pages/admin/AdminActionLog';
 import AdminAppRegistry from './pages/admin/AdminAppRegistry';
-import DataVault from './pages/DataVault';
 
 // User pages (new)
 import Notifications from './pages/Notifications';

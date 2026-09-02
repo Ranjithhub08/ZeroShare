@@ -366,7 +366,7 @@ const DataVault = () => {
             setIsHistoryModalOpen(true);
             setHistoryLoading(true);
             try {
-              const res = await api.get(`/audit?data_record_id=${row.id}`);
+              const res = await api.get(`/audit?data_type=${encodeURIComponent(row.data_type)}`);
               setAccessHistory(res.data?.logs || res.data?.data || []);
             } catch { setAccessHistory([]); }
             finally { setHistoryLoading(false); }

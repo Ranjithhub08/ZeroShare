@@ -83,6 +83,13 @@ exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
     const updated = await consentService.updateConsentStatus(req.params.id, status, req.userId, req.userRole);
+    // Log admin action
+    if (req.userRole === 'admin') {
+      await db.query(
+        `INSERT INTO admin_action_logs (admin_id, action, target_type, target_id, details) VALUES ($1,$2,'consent',$3,$4)`,
+        [req.userId, status, req.params.id, `Status changed to ${status} for consent #${req.params.id}`]
+      ).catch(() => {});
+    }
     res.json({ success: true, data: updated });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -141,6 +148,11 @@ exports.bulkAction = async (req, res) => {
       ids.map(id => consentService.updateConsentStatus(id, status, req.userId, req.userRole))
     );
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    // Log bulk action
+    await db.query(
+      `INSERT INTO admin_action_logs (admin_id, action, target_type, details) VALUES ($1,$2,'consent',$3)`,
+      [req.userId, `BULK_${status}`, `Bulk ${status} applied to ${succeeded} consent(s): IDs ${ids.join(',')}`]
+    ).catch(() => {});
     res.json({ success: true, message: `${succeeded} consent(s) ${status.toLowerCase()}` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

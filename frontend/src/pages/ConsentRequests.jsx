@@ -357,7 +357,7 @@ const ConsentRequests = () => {
             {row.status === 'GRANTED' && isExpiringSoon && !row.renewal_requested && (
               <Button size="sm" variant="outline"
                 className="h-7 px-2 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10 gap-1"
-                onClick={async (e) => { e.stopPropagation(); try { await api.post(`/consents/${row.id}/renew`); fetchConsents(); } catch {} }}
+                onClick={async (e) => { e.stopPropagation(); try { await api.post(`/consents/${row.id}/renew`); fetchConsents(); } catch (err) { console.error('Renewal failed', err); } }}
                 title="Request renewal">
                 <RefreshCw size={11} /> Renew
               </Button>

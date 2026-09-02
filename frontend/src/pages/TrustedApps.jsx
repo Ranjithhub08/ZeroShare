@@ -11,6 +11,7 @@ const TrustedApps = () => {
   const [loading, setLoading] = useState(true);
   const [newApp, setNewApp] = useState('');
   const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -25,13 +26,14 @@ const TrustedApps = () => {
 
   const add = async () => {
     if (!newApp.trim()) return;
-    setAdding(true);
+    setAdding(true); setAddError('');
     try {
       await api.post('/user/trusted-apps', { app_name: newApp.trim() });
       setNewApp('');
       await load();
-    } catch (e) { console.error(e); }
-    finally { setAdding(false); }
+    } catch (e) {
+      setAddError(e.response?.data?.error || 'App already trusted or failed to add.');
+    } finally { setAdding(false); }
   };
 
   const remove = async (name) => {
@@ -65,6 +67,7 @@ const TrustedApps = () => {
             <Plus size={14} /> Add
           </Button>
         </div>
+        {addError && <p className="text-xs text-rose-400 mt-2">{addError}</p>}
       </Card>
 
       <Card className="border border-border bg-card overflow-hidden">

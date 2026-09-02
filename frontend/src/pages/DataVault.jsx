@@ -295,13 +295,10 @@ const DataVault = () => {
           : row.record_type === 'file'
             ? <div className="flex items-center gap-1.5">
                 {getFileIcon(row.file_name)}
-                <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={row.file_name}>
-                  {row.file_name}
-                </span>
-                <span className="text-[10px] text-muted-foreground/50">{formatBytes(row.file_size)}</span>
+                <span className="text-xs font-mono text-amber-500/70 tracking-widest select-none">••• {row.file_name?.split('.').pop()?.toUpperCase() || 'FILE'}</span>
               </div>
-            : <span className="text-xs text-muted-foreground font-mono">
-                {row.value ? `${row.value.substring(0, 20)}${row.value.length > 20 ? '…' : ''}` : '—'}
+            : <span className="text-xs text-muted-foreground font-mono tracking-widest select-none">
+                ••••••••••••
               </span>
       )
     },

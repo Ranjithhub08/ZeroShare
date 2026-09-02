@@ -14,6 +14,8 @@ const ACTION_COLORS = {
   DELETED:  'bg-red-500/15 text-red-400 border-red-500/20',
   BROADCAST:'bg-blue-500/15 text-blue-400 border-blue-500/20',
   FORCE_REVOKE:'bg-rose-500/15 text-rose-400 border-rose-500/20',
+  BULK_GRANTED:'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  BULK_DENIED:'bg-rose-500/15 text-rose-400 border-rose-500/20',
 };
 
 const timeAgo = (ts) => {
@@ -42,8 +44,10 @@ const AdminActionLog = () => {
 
   useEffect(() => { load(); }, []);
 
-  const actions = ['ALL', 'GRANTED', 'DENIED', 'REVOKED', 'SUSPENDED', 'DELETED', 'BROADCAST'];
-  const filtered = filter === 'ALL' ? logs : logs.filter(l => l.action === filter);
+  const actions = ['ALL', 'GRANTED', 'DENIED', 'REVOKED', 'BULK', 'SUSPENDED', 'DELETED', 'BROADCAST'];
+  const filtered = filter === 'ALL' ? logs
+    : filter === 'BULK' ? logs.filter(l => l.action?.startsWith('BULK_'))
+    : logs.filter(l => l.action === filter);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">

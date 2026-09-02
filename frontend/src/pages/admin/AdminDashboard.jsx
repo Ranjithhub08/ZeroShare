@@ -31,16 +31,19 @@ const AdminDashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [consentRes, trendRes, healthRes] = await Promise.all([
+        const [consentRes, pendingRes, grantedRes, deniedRes, trendRes, healthRes] = await Promise.all([
           api.get('/consents?limit=5&sortBy=created_at&sortDir=DESC'),
+          api.get('/admin/pending'),
+          api.get('/consents?limit=1&status=GRANTED'),
+          api.get('/consents?limit=1&status=DENIED'),
           api.get('/ml/risk-trends'),
           api.get('/admin/health'),
         ]);
         const consents = consentRes.data.consents || consentRes.data.data?.consents || [];
-        const total = consentRes.data.total || consentRes.data.data?.total || 0;
-        const granted = consents.filter(c => c.status === 'GRANTED').length;
-        const pending = consents.filter(c => c.status === 'PENDING').length;
-        const denied  = consents.filter(c => c.status === 'DENIED').length;
+        const total   = consentRes.data.total || consentRes.data.data?.total || 0;
+        const pending = pendingRes.data.count || 0;
+        const granted = grantedRes.data.total || grantedRes.data.data?.total || 0;
+        const denied  = deniedRes.data.total  || deniedRes.data.data?.total  || 0;
         setRecentConsents(consents);
         setStats({ total, pending, granted, denied });
         setTrends(trendRes.data.data || []);

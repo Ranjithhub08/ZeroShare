@@ -3,7 +3,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Shield, FileCheck, Activity, Users,
-  LogOut, BrainCircuit, Bell, BarChart3, Lock, Clock, ScrollText, AppWindow,
+  LogOut, BrainCircuit, Bell, BarChart3, Lock, Clock, ScrollText, AppWindow, Database,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,7 @@ const AdminSidebar = () => {
     { name: 'Live Activity',    path: '/admin/activity',     icon: Activity },
     { name: 'User Management',  path: '/admin/users',        icon: Users },
     { name: 'App Registry',     path: '/admin/apps',         icon: AppWindow },
+    { name: 'Data Vault',       path: '/admin/data-vault',   icon: Database },
     { name: 'Action Log',       path: '/admin/action-log',   icon: ScrollText },
     { name: 'ML Analytics',     path: '/admin/ml',           icon: BrainCircuit },
     { name: 'Reports & GDPR',   path: '/admin/reports',      icon: BarChart3 },

@@ -47,6 +47,8 @@ const DataVault = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [accessHistory, setAccessHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // View Data Modal State
   const [viewRecord, setViewRecord] = useState(null);
@@ -359,7 +361,16 @@ const DataVault = () => {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-primary hover:bg-primary/10"
-            onClick={() => { setSelectedRecord(row); setIsHistoryModalOpen(true); }}
+            onClick={async () => {
+            setSelectedRecord(row);
+            setIsHistoryModalOpen(true);
+            setHistoryLoading(true);
+            try {
+              const res = await api.get(`/audit?data_record_id=${row.id}`);
+              setAccessHistory(res.data?.logs || res.data?.data || []);
+            } catch { setAccessHistory([]); }
+            finally { setHistoryLoading(false); }
+          }}
           >
             <History className="h-4 w-4" />
           </Button>
@@ -704,13 +715,31 @@ const DataVault = () => {
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-3 py-8 text-zinc-500">
-              <Clock className="h-8 w-8 opacity-30" />
-              <p className="text-sm text-center">Access log is recorded when this data<br/>is shared via a consent grant.</p>
-              <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
-                No access events yet
-              </Badge>
-            </div>
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : accessHistory.length > 0 ? (
+              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                {accessHistory.map((log, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-white/5 text-sm">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium text-zinc-200">{log.event_type || log.action}</span>
+                      <span className="text-xs text-muted-foreground">{log.app_name || '—'}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{new Date(log.timestamp || log.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3 py-8 text-zinc-500">
+                <Clock className="h-8 w-8 opacity-30" />
+                <p className="text-sm text-center">Access log is recorded when this data<br/>is shared via a consent grant.</p>
+                <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+                  No access events yet
+                </Badge>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

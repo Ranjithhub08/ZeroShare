@@ -262,7 +262,7 @@ router.get('/app-registry', async (req, res) => {
 // ─── 15. System Health ────────────────────────────────────────────────────────
 router.get('/health', async (req, res) => {
   const http = require('http');
-  const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+  const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
   try {
     // DB check
     const dbStart = Date.now();

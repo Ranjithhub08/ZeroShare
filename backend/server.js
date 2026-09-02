@@ -69,6 +69,26 @@ const runMigrations = async () => {
       factors     JSONB,
       analyzed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )`);
+    // Admin Action Log
+    await db.query(`CREATE TABLE IF NOT EXISTS admin_action_logs (
+      id         SERIAL PRIMARY KEY,
+      admin_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      action     VARCHAR(50) NOT NULL,
+      target_type VARCHAR(20),
+      target_id  INTEGER,
+      details    TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`);
+    // Trusted Apps (per user)
+    await db.query(`CREATE TABLE IF NOT EXISTS trusted_apps (
+      id        SERIAL PRIMARY KEY,
+      user_id   INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      app_name  VARCHAR(255) NOT NULL,
+      added_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      UNIQUE(user_id, app_name)
+    )`);
+    // Consent renewal requests
+    await db.query(`ALTER TABLE consents ADD COLUMN IF NOT EXISTS renewal_requested BOOLEAN DEFAULT FALSE`);
     console.log('✅ Database migrations applied.');
   } catch (err) {
     console.error('❌ Migration error:', err.message);

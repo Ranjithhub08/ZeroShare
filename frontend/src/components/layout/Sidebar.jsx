@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Shield, FileCheck, Activity, Settings, LogOut, ScanSearch } from 'lucide-react';
+import { LayoutDashboard, Shield, FileCheck, Activity, Settings, LogOut, ScanSearch, Bell, ShieldCheck } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
 
@@ -15,11 +15,13 @@ const Sidebar = () => {
   };
 
   const links = [
-    { name: 'My Dashboard',    path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Data Vault',      path: '/vault',     icon: Shield },
-    { name: 'My Requests',     path: '/consents',  icon: FileCheck },
-    { name: 'Audit Trail',     path: '/audit',     icon: Activity },
-    { name: 'Privacy Tools',   path: '/privacy',   icon: ScanSearch },
+    { name: 'My Dashboard',    path: '/dashboard',       icon: LayoutDashboard },
+    { name: 'Data Vault',      path: '/vault',           icon: Shield },
+    { name: 'My Requests',     path: '/consents',        icon: FileCheck },
+    { name: 'Notifications',   path: '/notifications',   icon: Bell },
+    { name: 'Trusted Apps',    path: '/trusted-apps',    icon: ShieldCheck },
+    { name: 'Audit Trail',     path: '/audit',           icon: Activity },
+    { name: 'Privacy Tools',   path: '/privacy',         icon: ScanSearch },
   ];
 
   const bottomLinks = [

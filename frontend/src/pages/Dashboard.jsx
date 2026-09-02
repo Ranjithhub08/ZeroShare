@@ -35,17 +35,24 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chartFilter, setChartFilter] = useState('7D');
+  const [privacyScore, setPrivacyScore] = useState(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await api.get('/analytics');
-        if (res.data.success) {
-          setStats(res.data.data);
+        const [analyticsRes, scoreRes] = await Promise.allSettled([
+          api.get('/analytics'),
+          api.get('/ml/privacy-summary'),
+        ]);
+        if (analyticsRes.status === 'fulfilled' && analyticsRes.value.data.success) {
+          setStats(analyticsRes.value.data.data);
         } else {
           setError('Failed to load dashboard data.');
+        }
+        if (scoreRes.status === 'fulfilled') {
+          setPrivacyScore(scoreRes.value.data);
         }
       } catch (err) {
         console.error('Dashboard fetch error:', err);
@@ -283,6 +290,27 @@ const Dashboard = () => {
           </motion.div>
         );
       })()}
+
+      {/* ML Privacy Health Score — user only */}
+      {!isAdmin && privacyScore && privacyScore.score !== undefined && (
+        <motion.div variants={itemVariants} className="glass-card p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck className={`h-5 w-5 ${privacyScore.score >= 80 ? 'text-emerald-400' : privacyScore.score >= 60 ? 'text-amber-400' : 'text-rose-400'}`} />
+            <h2 className="text-lg font-semibold text-white">Privacy Health Score</h2>
+            <span className={`ml-auto text-3xl font-bold ${privacyScore.score >= 80 ? 'text-emerald-400' : privacyScore.score >= 60 ? 'text-amber-400' : 'text-rose-400'}`}>
+              {privacyScore.score}<span className="text-sm text-zinc-500">/100</span>
+            </span>
+          </div>
+          <p className="text-sm text-zinc-400 mb-4">{privacyScore.summary}</p>
+          {privacyScore.insights?.length > 0 && (
+            <div className="space-y-2">
+              {privacyScore.insights.map((insight, i) => (
+                <div key={i} className="text-sm text-zinc-300 bg-white/[0.03] border border-white/5 rounded-lg px-4 py-2">{insight}</div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Charts Row */}
       <motion.div variants={itemVariants} className="grid grid-cols-12 gap-6">

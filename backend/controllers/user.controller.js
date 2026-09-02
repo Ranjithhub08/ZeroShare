@@ -48,6 +48,16 @@ exports.updatePassword = async (req, res) => {
 exports.updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
+    // Only ranjithkumarhub@gmail.com (the super-admin) can promote others to admin
+    const SUPER_ADMIN = 'ranjithkumarhub@gmail.com';
+    if (role === 'admin' && req.userEmail !== SUPER_ADMIN) {
+      return res.status(403).json({ success: false, error: 'Only the super-admin can promote users to admin' });
+    }
+    // Prevent demoting the super-admin
+    const target = await db.query('SELECT email FROM users WHERE id=$1', [req.params.id]);
+    if (target.rows[0]?.email === SUPER_ADMIN) {
+      return res.status(403).json({ success: false, error: 'Super-admin role cannot be changed' });
+    }
     const updated = await userService.updateUserRole(req.params.id, role);
     res.json({ success: true, data: updated });
   } catch (err) {
@@ -201,4 +211,30 @@ exports.unsuspendUser = async (req, res) => {
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
+};
+
+exports.getTrustedApps = async (req, res) => {
+  try {
+    const result = await db.query('SELECT id, app_name, added_at FROM trusted_apps WHERE user_id=$1 ORDER BY added_at DESC', [req.userId]);
+    res.json({ success: true, data: result.rows });
+  } catch (err) { res.status(500).json({ success: false, error: 'Failed to fetch trusted apps' }); }
+};
+
+exports.addTrustedApp = async (req, res) => {
+  try {
+    const { app_name } = req.body;
+    if (!app_name) return res.status(400).json({ success: false, error: 'app_name required' });
+    const result = await db.query(
+      'INSERT INTO trusted_apps (user_id, app_name) VALUES ($1,$2) ON CONFLICT (user_id, app_name) DO NOTHING RETURNING *',
+      [req.userId, app_name]
+    );
+    res.json({ success: true, data: result.rows[0] || { app_name, note: 'already trusted' } });
+  } catch (err) { res.status(500).json({ success: false, error: 'Failed to add trusted app' }); }
+};
+
+exports.removeTrustedApp = async (req, res) => {
+  try {
+    await db.query('DELETE FROM trusted_apps WHERE user_id=$1 AND app_name=$2', [req.userId, decodeURIComponent(req.params.name)]);
+    res.json({ success: true, message: 'Removed from trusted apps' });
+  } catch (err) { res.status(500).json({ success: false, error: 'Failed to remove trusted app' }); }
 };

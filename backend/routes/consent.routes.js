@@ -15,6 +15,7 @@ router.post('/reject',       adminOnly, ctrl.rejectConsent);
 router.post('/revoke',       adminOnly, ctrl.revokeConsent);
 router.post('/bulk',         adminOnly, ctrl.bulkAction);
 router.patch('/:id/status',  adminOnly, ctrl.updateStatus);
+router.post('/:id/renew',    ctrl.renewConsent);
 router.get('/:id/history',   ctrl.getHistory);
 router.get('/:id/access-logs', ctrl.getAccessLogs);
 

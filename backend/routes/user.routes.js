@@ -23,4 +23,9 @@ router.put('/:id/suspend',      adminOnly, ctrl.suspendUser);
 router.put('/:id/unsuspend',    adminOnly, ctrl.unsuspendUser);
 router.delete('/:id',           adminOnly, ctrl.deleteUser);
 
+// Trusted Apps
+router.get('/trusted-apps',           ctrl.getTrustedApps);
+router.post('/trusted-apps',          ctrl.addTrustedApp);
+router.delete('/trusted-apps/:name',  ctrl.removeTrustedApp);
+
 module.exports = router;

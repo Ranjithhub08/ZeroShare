@@ -155,8 +155,23 @@ const AdminConsents = () => {
                             <RotateCcw size={14} />
                           </Button>
                         )}
-                        {['DENIED','REVOKED'].includes(c.status) && (
-                          <span className="text-xs text-muted-foreground">—</span>
+                        {c.status === 'DENIED' && (
+                          <Button size="sm" variant="ghost"
+                            className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                            disabled={!!actionLoading}
+                            title="Re-approve"
+                            onClick={() => updateStatus(c.id, 'GRANTED')}>
+                            <CheckCircle2 size={14} />
+                          </Button>
+                        )}
+                        {c.status === 'REVOKED' && (
+                          <Button size="sm" variant="ghost"
+                            className="h-7 px-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                            disabled={!!actionLoading}
+                            title="Restore / Re-approve"
+                            onClick={() => updateStatus(c.id, 'GRANTED')}>
+                            <CheckCircle2 size={14} />
+                          </Button>
                         )}
                       </div>
                     </td>

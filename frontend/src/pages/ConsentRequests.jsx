@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   Loader2,
   ScanSearch,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -337,39 +338,57 @@ const ConsentRequests = () => {
     {
       header: '',
       accessor: 'actions',
-      render: (row) => (
-        <div className="flex justify-end gap-1 items-center">
-          {row.status === 'PENDING' && (
-            <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1">
-              ⏳ Awaiting admin review
-            </span>
-          )}
-          {row.status === 'GRANTED' && (
-            <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-1">
-              ✅ Approved by admin
-            </span>
-          )}
-          {row.status === 'DENIED' && (
-            <span className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-2 py-1">
-              ❌ Denied by admin
-            </span>
-          )}
-          {row.status === 'REVOKED' && (
-            <span className="text-xs text-zinc-400 bg-zinc-500/10 border border-zinc-500/20 rounded-md px-2 py-1">
-              🚫 Revoked
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={(e) => { e.stopPropagation(); setSelectedRequest(row); setIsModalOpen(true); }}
-            title="View details"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )
+      render: (row) => {
+        const expiresAt = row.expires_at ? new Date(row.expires_at) : null;
+        const daysLeft = expiresAt ? Math.ceil((expiresAt - Date.now()) / 86400000) : null;
+        const isExpiringSoon = row.status === 'GRANTED' && daysLeft !== null && daysLeft <= 7;
+        return (
+          <div className="flex justify-end gap-1 items-center">
+            {row.status === 'PENDING' && (
+              <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1">
+                ⏳ Awaiting admin review
+              </span>
+            )}
+            {row.status === 'GRANTED' && !isExpiringSoon && (
+              <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-1">
+                ✅ Approved by admin
+              </span>
+            )}
+            {row.status === 'GRANTED' && isExpiringSoon && !row.renewal_requested && (
+              <Button size="sm" variant="outline"
+                className="h-7 px-2 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10 gap-1"
+                onClick={async (e) => { e.stopPropagation(); try { await api.post(`/consents/${row.id}/renew`); fetchConsents(); } catch {} }}
+                title="Request renewal">
+                <RefreshCw size={11} /> Renew
+              </Button>
+            )}
+            {row.status === 'GRANTED' && row.renewal_requested && (
+              <span className="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-md px-2 py-1">
+                🔄 Renewal requested
+              </span>
+            )}
+            {row.status === 'DENIED' && (
+              <span className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-2 py-1">
+                ❌ Denied by admin
+              </span>
+            )}
+            {row.status === 'REVOKED' && (
+              <span className="text-xs text-zinc-400 bg-zinc-500/10 border border-zinc-500/20 rounded-md px-2 py-1">
+                🚫 Revoked
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={(e) => { e.stopPropagation(); setSelectedRequest(row); setIsModalOpen(true); }}
+              title="View details"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      }
     }
   ];
 

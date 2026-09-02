@@ -107,6 +107,28 @@ exports.getAccessLogs = async (req, res) => {
   }
 };
 
+// POST /consents/:id/renew — user requests renewal of an expiring consent
+exports.renewConsent = async (req, res) => {
+  try {
+    const result = await db.query(
+      `UPDATE consents SET renewal_requested=TRUE, updated_at=NOW() WHERE id=$1 AND user_id=$2 AND status='GRANTED' RETURNING *`,
+      [req.params.id, req.userId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Consent not found or not yours' });
+    // Notify admin
+    const adminRes = await db.query('SELECT id FROM users WHERE email=$1', [SUPER_ADMIN_EMAIL]);
+    if (adminRes.rows.length > 0) {
+      const c = result.rows[0];
+      await notifService.create(adminRes.rows[0].id, '🔄 Renewal Request',
+        `A user is requesting renewal for "${c.app_name}" (${c.data_type}). Please review in Admin → All Consents.`
+      );
+    }
+    res.json({ success: true, message: 'Renewal request sent to admin', data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Failed to request renewal' });
+  }
+};
+
 exports.bulkAction = async (req, res) => {
   if (req.userRole !== 'admin')
     return res.status(403).json({ success: false, error: 'Admin only' });

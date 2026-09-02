@@ -3,7 +3,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Shield, FileCheck, Activity, Users,
-  LogOut, BrainCircuit, Bell, BarChart3, Lock,
+  LogOut, BrainCircuit, Bell, BarChart3, Lock, Clock, ScrollText, AppWindow,
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from '@/context/AuthContext';
@@ -15,13 +15,16 @@ const AdminSidebar = () => {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const links = [
-    { name: 'Admin Overview',   path: '/admin/dashboard',  icon: LayoutDashboard },
-    { name: 'All Consents',     path: '/admin/consents',   icon: FileCheck },
-    { name: 'Threat Dashboard', path: '/admin/threats',    icon: Bell },
-    { name: 'Live Activity',    path: '/admin/activity',   icon: Activity },
-    { name: 'User Management',  path: '/admin/users',      icon: Users },
-    { name: 'ML Analytics',     path: '/admin/ml',         icon: BrainCircuit },
-    { name: 'Reports & GDPR',   path: '/admin/reports',    icon: BarChart3 },
+    { name: 'Admin Overview',   path: '/admin/dashboard',    icon: LayoutDashboard },
+    { name: 'Pending Queue',    path: '/admin/pending',      icon: Clock },
+    { name: 'All Consents',     path: '/admin/consents',     icon: FileCheck },
+    { name: 'Threat Dashboard', path: '/admin/threats',      icon: Bell },
+    { name: 'Live Activity',    path: '/admin/activity',     icon: Activity },
+    { name: 'User Management',  path: '/admin/users',        icon: Users },
+    { name: 'App Registry',     path: '/admin/apps',         icon: AppWindow },
+    { name: 'Action Log',       path: '/admin/action-log',   icon: ScrollText },
+    { name: 'ML Analytics',     path: '/admin/ml',           icon: BrainCircuit },
+    { name: 'Reports & GDPR',   path: '/admin/reports',      icon: BarChart3 },
   ];
 
   const bottomLinks = [

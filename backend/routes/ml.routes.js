@@ -155,7 +155,7 @@ router.get('/anomaly', protect, async (req, res) => {
 // GET /api/ml/privacy-summary — Feature 11: AI summary of consent history
 router.get('/privacy-summary', protect, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.userId;
     // Fetch all consents for this user
     const result = await db.query(
       `SELECT app_name, data_type, purpose, duration, status, risk_level, risk_score, expires_at, created_at

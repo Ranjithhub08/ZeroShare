@@ -29,6 +29,13 @@ import AdminML from './pages/admin/AdminML';
 import AdminThreat from './pages/admin/AdminThreat';
 import AdminActivity from './pages/admin/AdminActivity';
 import AdminReport from './pages/admin/AdminReport';
+import AdminPending from './pages/admin/AdminPending';
+import AdminActionLog from './pages/admin/AdminActionLog';
+import AdminAppRegistry from './pages/admin/AdminAppRegistry';
+
+// User pages (new)
+import Notifications from './pages/Notifications';
+import TrustedApps from './pages/TrustedApps';
 
 // Route guards
 const UserRoute = ({ children }) => {
@@ -61,10 +68,12 @@ function AppRoutes() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="vault"     element={<DataVault />} />
-          <Route path="consents"  element={<ConsentRequests />} />
-          <Route path="audit"     element={<AuditLogs />} />
-          <Route path="settings"  element={<Settings />} />
-          <Route path="privacy"   element={<ConsentRequests />} />
+          <Route path="consents"       element={<ConsentRequests />} />
+          <Route path="notifications"  element={<Notifications />} />
+          <Route path="trusted-apps"   element={<TrustedApps />} />
+          <Route path="audit"          element={<AuditLogs />} />
+          <Route path="settings"       element={<Settings />} />
+          <Route path="privacy"        element={<ConsentRequests />} />
         </Route>
 
         {/* ── ADMIN PORTAL ── */}
@@ -75,10 +84,13 @@ function AppRoutes() {
           <Route path="threats"    element={<AdminThreat />} />
           <Route path="activity"   element={<AdminActivity />} />
           <Route path="users"      element={<AdminUsers />} />
-          <Route path="ml"         element={<AdminML />} />
-          <Route path="reports"    element={<AdminReport />} />
-          <Route path="audit"      element={<AuditLogs />} />
-          <Route path="settings"   element={<Settings />} />
+          <Route path="pending"      element={<AdminPending />} />
+          <Route path="action-log"  element={<AdminActionLog />} />
+          <Route path="apps"        element={<AdminAppRegistry />} />
+          <Route path="ml"          element={<AdminML />} />
+          <Route path="reports"     element={<AdminReport />} />
+          <Route path="audit"       element={<AuditLogs />} />
+          <Route path="settings"    element={<Settings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -191,6 +191,130 @@ router.post('/broadcast', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── 12. Pending Approval Queue ──────────────────────────────────────────────
+router.get('/pending', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT c.id, c.app_name, c.data_type, c.purpose, c.duration, c.risk_level, c.risk_score,
+             c.status, c.created_at, c.requester_type, c.requester_url, c.renewal_requested,
+             u.name as user_name, u.email as user_email,
+             EXTRACT(EPOCH FROM (NOW() - c.created_at))/3600 as hours_waiting
+      FROM consents c JOIN users u ON c.user_id = u.id
+      WHERE c.status = 'PENDING'
+      ORDER BY c.created_at ASC
+    `);
+    res.json({ success: true, data: result.rows, count: result.rows.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── 13. Admin Action Log ─────────────────────────────────────────────────────
+router.get('/action-log', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT a.id, a.action, a.target_type, a.target_id, a.details, a.created_at,
+             u.name as admin_name, u.email as admin_email
+      FROM admin_action_logs a
+      LEFT JOIN users u ON a.admin_id = u.id
+      ORDER BY a.created_at DESC
+      LIMIT 200
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Internal helper — called by consent.controller after admin actions
+router.post('/log-action', async (req, res) => {
+  try {
+    const { action, target_type, target_id, details } = req.body;
+    await db.query(
+      `INSERT INTO admin_action_logs (admin_id, action, target_type, target_id, details) VALUES ($1,$2,$3,$4,$5)`,
+      [req.userId, action, target_type || null, target_id || null, details || null]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── 14. App Registry ────────────────────────────────────────────────────────
+router.get('/app-registry', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        COALESCE(NULLIF(app_name,''), requester_url) as app_name,
+        requester_type,
+        COUNT(*) as total_requests,
+        COUNT(*) FILTER(WHERE status='GRANTED') as approved,
+        COUNT(*) FILTER(WHERE status='DENIED') as denied,
+        COUNT(*) FILTER(WHERE status='REVOKED') as revoked,
+        COUNT(*) FILTER(WHERE status='PENDING') as pending,
+        COUNT(*) FILTER(WHERE risk_level='high') as high_risk,
+        ROUND(AVG(risk_score)) as avg_risk_score,
+        MAX(created_at) as last_request,
+        COUNT(DISTINCT user_id) as unique_users
+      FROM consents
+      GROUP BY COALESCE(NULLIF(app_name,''), requester_url), requester_type
+      ORDER BY total_requests DESC
+      LIMIT 100
+    `);
+    res.json({ success: true, data: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── 15. System Health ────────────────────────────────────────────────────────
+router.get('/health', async (req, res) => {
+  const http = require('http');
+  const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+  try {
+    // DB check
+    const dbStart = Date.now();
+    await db.query('SELECT 1');
+    const dbMs = Date.now() - dbStart;
+    // Active sessions
+    const sessions = await db.query(`SELECT COUNT(*) FROM sessions WHERE is_revoked=FALSE AND last_used_at > NOW() - INTERVAL '30 minutes'`);
+    // Total users, consents
+    const [userCount, consentCount, pendingCount] = await Promise.all([
+      db.query('SELECT COUNT(*) FROM users'),
+      db.query('SELECT COUNT(*) FROM consents'),
+      db.query("SELECT COUNT(*) FROM consents WHERE status='PENDING'"),
+    ]);
+    // ML service check
+    const mlStatus = await new Promise((resolve) => {
+      const r = http.request(`${ML_SERVICE_URL}/health`, { timeout: 3000 }, (resp) => {
+        let d = ''; resp.on('data', c => { d += c; }); resp.on('end', () => { try { resolve(JSON.parse(d)); } catch { resolve({ status: 'error' }); } });
+      });
+      r.on('error', () => resolve({ status: 'offline' }));
+      r.on('timeout', () => { r.destroy(); resolve({ status: 'offline' }); });
+      r.end();
+    });
+    res.json({
+      success: true,
+      db: { status: 'online', response_ms: dbMs },
+      ml: mlStatus,
+      stats: {
+        active_sessions: parseInt(sessions.rows[0].count),
+        total_users: parseInt(userCount.rows[0].count),
+        total_consents: parseInt(consentCount.rows[0].count),
+        pending_consents: parseInt(pendingCount.rows[0].count),
+      },
+      uptime_seconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── 16. User Detail Drill-down ───────────────────────────────────────────────
+router.get('/users/:id/detail', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [userRes, consentsRes, logsRes] = await Promise.all([
+      db.query('SELECT id, name, email, role, is_suspended, two_fa_enabled, created_at FROM users WHERE id=$1', [id]),
+      db.query(`SELECT id, app_name, data_type, purpose, duration, status, risk_level, risk_score, created_at, expires_at FROM consents WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50`, [id]),
+      db.query(`SELECT event_type, app_name, status, timestamp FROM audit_logs WHERE user_id=$1 ORDER BY timestamp DESC LIMIT 30`, [id]),
+    ]);
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, user: userRes.rows[0], consents: consentsRes.rows, audit_logs: logsRes.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── Suspicious Pattern Check (background-style) ─────────────────────────────
 router.get('/suspicious', async (req, res) => {
   try {

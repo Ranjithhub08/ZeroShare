@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
-import { Users, FileCheck, AlertTriangle, ShieldCheck, Clock, TrendingUp, Activity, BrainCircuit } from 'lucide-react';
+import { Users, FileCheck, AlertTriangle, ShieldCheck, Clock, TrendingUp, Activity, BrainCircuit, Server, Database, Zap, Wifi } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import api from '@/services/api';
@@ -25,14 +25,16 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentConsents, setRecentConsents] = useState([]);
   const [trends, setTrends] = useState([]);
+  const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [consentRes, trendRes] = await Promise.all([
+        const [consentRes, trendRes, healthRes] = await Promise.all([
           api.get('/consents?limit=5&sortBy=created_at&sortDir=DESC'),
           api.get('/ml/risk-trends'),
+          api.get('/admin/health'),
         ]);
         const consents = consentRes.data.consents || consentRes.data.data?.consents || [];
         const total = consentRes.data.total || consentRes.data.data?.total || 0;
@@ -42,6 +44,7 @@ const AdminDashboard = () => {
         setRecentConsents(consents);
         setStats({ total, pending, granted, denied });
         setTrends(trendRes.data.data || []);
+        setHealth(healthRes.data);
       } catch (e) {
         console.error(e);
       } finally { setLoading(false); }
@@ -75,6 +78,51 @@ const AdminDashboard = () => {
           <StatCard icon={ShieldCheck}  label="Approved"        value={stats?.granted} color="bg-emerald-600" />
           <StatCard icon={AlertTriangle}label="Denied"          value={stats?.denied}  color="bg-rose-600"    />
         </div>
+      )}
+
+      {/* System Health */}
+      {health && (
+        <Card className="p-5 border border-border bg-card">
+          <div className="flex items-center gap-2 mb-4">
+            <Server size={16} className="text-rose-400" />
+            <h2 className="font-semibold">System Health</h2>
+            <span className="ml-auto text-xs text-muted-foreground">Uptime: {Math.floor((health.uptime_seconds || 0) / 60)}m</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+              <Database size={14} className={health.db?.status === 'online' ? 'text-emerald-400' : 'text-rose-400'} />
+              <div>
+                <p className="text-xs font-medium">Database</p>
+                <p className={`text-xs ${health.db?.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {health.db?.status === 'online' ? `Online · ${health.db.response_ms}ms` : 'Offline'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+              <BrainCircuit size={14} className={health.ml?.status === 'ok' ? 'text-emerald-400' : 'text-amber-400'} />
+              <div>
+                <p className="text-xs font-medium">ML Service</p>
+                <p className={`text-xs ${health.ml?.status === 'ok' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {health.ml?.status === 'ok' ? 'Online' : 'Offline'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+              <Wifi size={14} className="text-blue-400" />
+              <div>
+                <p className="text-xs font-medium">Active Sessions</p>
+                <p className="text-xs text-blue-400">{health.stats?.active_sessions || 0}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+              <Zap size={14} className="text-amber-400" />
+              <div>
+                <p className="text-xs font-medium">Pending Reviews</p>
+                <p className="text-xs text-amber-400">{health.stats?.pending_consents || 0}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

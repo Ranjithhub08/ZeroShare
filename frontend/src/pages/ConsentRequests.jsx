@@ -60,6 +60,8 @@ const ConsentRequests = () => {
     purpose: '',
     duration: '30 Days'
   });
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Anomaly warning (shown after consent created)
   const [anomalyWarning, setAnomalyWarning] = useState(null);
@@ -466,19 +468,19 @@ const ConsentRequests = () => {
     if (isWebsite && !newConsentData.requester_url) return;
     if (!isWebsite && !newConsentData.app_name) return;
     if (!newConsentData.data_type || !newConsentData.purpose) return;
-    setLoading(true);
+    setSubmitLoading(true);
+    setSubmitError('');
     try {
       const res = await api.post('/consents', newConsentData);
       setIsNewConsentModalOpen(false);
       setNewConsentData({ requester_type: 'app', app_name: '', requester_url: '', data_type: '', purpose: '', duration: '30 Days' });
       setMlPreview(null);
+      setSubmitError('');
       fetchConsents();
-      // Feature 4: anomaly warning
       if (res.data?.anomaly?.anomaly) {
         setAnomalyWarning(res.data.anomaly);
         setTimeout(() => setAnomalyWarning(null), 12000);
       }
-      // Feature 6: permission creep check
       const appName = newConsentData.requester_type === 'website' ? newConsentData.requester_url : newConsentData.app_name;
       if (appName) {
         api.get(`/ml/permission-creep?app_name=${encodeURIComponent(appName)}`).then(cr => {
@@ -486,12 +488,13 @@ const ConsentRequests = () => {
             setAnomalyWarning(prev => prev || cr.data.data);
             setTimeout(() => setAnomalyWarning(null), 15000);
           }
-        }).catch(() => {/* ignore */});
+        }).catch(() => {});
       }
     } catch (err) {
       console.error('Failed to create consent', err);
+      setSubmitError(err.response?.data?.error || 'Failed to submit consent. Please try again.');
     } finally {
-      setLoading(false);
+      setSubmitLoading(false);
     }
   };
 
@@ -947,15 +950,21 @@ const ConsentRequests = () => {
               </div>
             )}
 
+            {submitError && (
+              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-md px-3 py-2 mt-1">
+                {submitError}
+              </p>
+            )}
             <Button
               className="mt-2 bg-primary hover:bg-primary/90 text-white w-full"
               onClick={handleCreateConsent}
               disabled={
+                submitLoading ||
                 !newConsentData.data_type || !newConsentData.purpose ||
                 (newConsentData.requester_type === 'app' ? !newConsentData.app_name : !newConsentData.requester_url)
               }
             >
-              Issue Consent Grant
+              {submitLoading ? 'Submitting…' : 'Issue Consent Grant'}
             </Button>
           </div>
         </DialogContent>

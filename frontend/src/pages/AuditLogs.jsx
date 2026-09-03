@@ -105,7 +105,7 @@ const AuditLogs = () => {
     setLoading(true);
     try {
       const res = await api.get('/audit', {
-        params: { page, limit }
+        params: { page, limit, sortBy, sortDir }
       });
       if (res.data.success) {
         setData(res.data.logs);
@@ -117,7 +117,7 @@ const AuditLogs = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit]);
+  }, [page, limit, sortBy, sortDir]);
 
   useEffect(() => {
     fetchLogs();
@@ -182,7 +182,7 @@ const AuditLogs = () => {
             <Button variant="outline" className="gap-2 bg-card" onClick={downloadCSV}>
               <Download className="h-4 w-4" /> Download Ledger
             </Button>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={fetchLogs} disabled={loading}>
               <ShieldCheck className="h-4 w-4" /> Verify Integrity
             </Button>
           </div>

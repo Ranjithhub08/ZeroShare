@@ -799,7 +799,7 @@ const ConsentRequests = () => {
       
       {/* New Consent Creation Modal */}
       <Dialog open={isNewConsentModalOpen} onOpenChange={setIsNewConsentModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Issue New Authorization</DialogTitle>
             <DialogDescription>
@@ -807,7 +807,7 @@ const ConsentRequests = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4 py-2">
+          <div className="flex flex-col gap-4 py-2 overflow-y-auto pr-1">
             {/* App / Website toggle */}
             <div className="flex gap-1 p-1 rounded-lg bg-muted/40 border border-white/5">
               <button type="button"

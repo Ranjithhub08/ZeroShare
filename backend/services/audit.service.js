@@ -1,11 +1,16 @@
 const db = require('../database/db');
 
 class AuditService {
-  async getLogs(userId, role, page=1, limit=10) {
+  async getLogs(userId, role, page=1, limit=10, sortBy='timestamp', sortDir='DESC') {
     const offset = (page-1)*limit;
     const isAdmin = role === 'admin';
     const where = isAdmin ? '' : 'WHERE al.user_id = $3';
     const params = isAdmin ? [limit, offset] : [limit, offset, userId];
+
+    // Whitelist sortable columns to prevent SQL injection
+    const allowedSort = ['timestamp', 'event_type', 'app_name', 'data_accessed', 'status'];
+    const safeSort = allowedSort.includes(sortBy) ? sortBy : 'timestamp';
+    const safeDir = sortDir === 'ASC' ? 'ASC' : 'DESC';
 
     const countRes = await db.query(
       `SELECT COUNT(*) FROM audit_logs ${isAdmin ? '' : 'WHERE user_id = $1'}`,
@@ -16,7 +21,7 @@ class AuditService {
     const rows = await db.query(
       `SELECT al.*, u.name as user_name FROM audit_logs al
        LEFT JOIN users u ON al.user_id = u.id
-       ${where} ORDER BY al.timestamp DESC LIMIT $1 OFFSET $2`,
+       ${where} ORDER BY al.${safeSort} ${safeDir} LIMIT $1 OFFSET $2`,
       params
     );
     return { logs: rows.rows, total, page: parseInt(page), totalPages: Math.ceil(total/limit) };

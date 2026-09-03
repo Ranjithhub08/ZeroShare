@@ -87,8 +87,8 @@ exports.updateStatus = async (req, res) => {
     if (req.userRole === 'admin') {
       await db.query(
         `INSERT INTO admin_action_logs (admin_id, action, target_type, target_id, details) VALUES ($1,$2,'consent',$3,$4)`,
-        [req.userId, status, req.params.id, `Status changed to ${status} for consent #${req.params.id}`]
-      ).catch(() => {});
+        [req.userId, status, parseInt(req.params.id), `Status changed to ${status} for consent #${req.params.id}`]
+      ).catch(err => console.error('[ActionLog] Insert failed:', err.message));
     }
     res.json({ success: true, data: updated });
   } catch (err) {
@@ -152,7 +152,7 @@ exports.bulkAction = async (req, res) => {
     await db.query(
       `INSERT INTO admin_action_logs (admin_id, action, target_type, details) VALUES ($1,$2,'consent',$3)`,
       [req.userId, `BULK_${status}`, `Bulk ${status} applied to ${succeeded} consent(s): IDs ${ids.join(',')}`]
-    ).catch(() => {});
+    ).catch(err => console.error('[ActionLog] Bulk insert failed:', err.message));
     res.json({ success: true, message: `${succeeded} consent(s) ${status.toLowerCase()}` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

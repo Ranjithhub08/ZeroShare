@@ -168,7 +168,7 @@ setTimeout(async () => {
 }, 10 * 1000);
 
 // ML Nightly Retrain job — runs every 24 hours, trains on real admin decisions
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://ml-service:8000';
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 const retrainML = async () => {
   try {
     const db = require('./database/db');

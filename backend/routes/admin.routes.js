@@ -170,24 +170,31 @@ router.post('/broadcast', async (req, res) => {
     const users = await db.query(`SELECT id, name, email FROM users WHERE role='user' AND is_suspended=FALSE`);
     let sent = 0;
     for (const u of users.rows) {
-      await notifService.create(u.id, `📢 ${title}`, message);
-      if (sendMail) {
-        sendEmail({
-          to: u.email,
-          subject: `[ZeroShare Alert] ${title}`,
-          html: `<div style="font-family:sans-serif;max-width:500px;margin:auto;background:#0f0f12;color:#e4e4e7;padding:32px;border-radius:12px;">
-            <h2 style="color:#a855f7">ZeroShare Security Alert</h2>
-            <p>Hi <strong>${u.name}</strong>,</p>
-            <h3 style="color:#f87171">${title}</h3>
-            <p>${message}</p>
-            <hr style="border-color:#27272a;margin:24px 0"/>
-            <p style="font-size:12px;color:#52525b">ZeroShare Admin Team</p>
-          </div>`
-        }).catch(() => {});
+      try {
+        await notifService.create(u.id, `📢 ${title}`, message);
+        if (sendMail) {
+          sendEmail({
+            to: u.email,
+            subject: `[ZeroShare Alert] ${title}`,
+            html: `<div style="font-family:sans-serif;max-width:500px;margin:auto;background:#0f0f12;color:#e4e4e7;padding:32px;border-radius:12px;">
+              <h2 style="color:#a855f7">ZeroShare Security Alert</h2>
+              <p>Hi <strong>${u.name}</strong>,</p>
+              <h3 style="color:#f87171">${title}</h3>
+              <p>${message}</p>
+              <hr style="border-color:#27272a;margin:24px 0"/>
+              <p style="font-size:12px;color:#52525b">ZeroShare Admin Team</p>
+            </div>`
+          }).catch(e => console.error('[Broadcast] Email failed for', u.email, e.message));
+        }
+        sent++;
+      } catch (e) {
+        console.error('[Broadcast] Notification failed for user', u.id, e.message);
       }
-      sent++;
     }
-    res.json({ success: true, sent, message: `Broadcast sent to ${sent} users` });
+    if (users.rows.length === 0) {
+      return res.json({ success: true, sent: 0, message: 'No active users to broadcast to.' });
+    }
+    res.json({ success: true, sent, message: `Broadcast sent to ${sent} user${sent !== 1 ? 's' : ''}` });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

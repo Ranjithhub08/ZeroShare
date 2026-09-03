@@ -51,7 +51,7 @@ const AdminThreat = () => {
     try {
       const res = await api.post('/admin/broadcast', { ...broadcast, send_email: true });
       setBroadcastResult(res.data);
-    } catch (e) { setBroadcastResult({ error: 'Failed' }); }
+    } catch (e) { setBroadcastResult({ error: e.response?.data?.error || e.message || 'Broadcast failed' }); }
     finally { setBroadcastLoading(false); }
   };
 

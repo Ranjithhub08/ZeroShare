@@ -111,6 +111,19 @@ const ConsentRequests = () => {
 
   const analyzeWebsite = async () => {
     if (!websiteUrl.trim()) return;
+    // Validate it's a real URL
+    try {
+      const raw = websiteUrl.trim();
+      const testUrl = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+      const parsed = new URL(testUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname.includes('.')) {
+        setWebsiteAnalysis({ error: 'Please enter a valid website URL (e.g. https://example.com)' });
+        return;
+      }
+    } catch {
+      setWebsiteAnalysis({ error: 'Please enter a valid website URL (e.g. https://example.com)' });
+      return;
+    }
     setWebsiteAnalysisLoading(true);
     setWebsiteAnalysis(null);
     setGeoRisk(null);

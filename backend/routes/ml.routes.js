@@ -42,6 +42,17 @@ router.post('/analyze-website', protect, async (req, res) => {
   try {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
+    // Validate it's a real http/https URL
+    try {
+      const raw = url.trim();
+      const testUrl = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+      const parsed = new URL(testUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname.includes('.')) {
+        return res.status(400).json({ error: 'Please enter a valid website URL (e.g. https://example.com)' });
+      }
+    } catch {
+      return res.status(400).json({ error: 'Invalid URL — please enter a valid website URL' });
+    }
     const result = await proxyToML('/analyze-website', { url });
     // Save to history (Feature 7)
     if (result.score !== undefined) {
